@@ -1,0 +1,188 @@
+.feedback-progress-dialog {
+  --primary-color: #409EFF;
+  --success-color: #67C23A;
+  --danger-color: #F56C6C;
+  --text-color: #303133;
+  --border-radius: 8px;
+  --transition-duration: 0.3s;
+}
+
+/* 对话框容器样式 */
+.feedback-progress-dialog :deep(.el-dialog) {
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* 自定义头部样式 */
+.custom-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #EBEEF5;
+}
+
+.title-wrapper h2 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+.header-actions .close-btn {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background-color var(--transition-duration);
+}
+
+.header-actions .close-btn:hover {
+  background-color: #f5f7fa;
+}
+
+/* 内容区域样式 */
+.content-section {
+  padding: 16px 24px 24px 24px; /* 减少顶部内边距 */
+}
+
+.progress-info {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 游戏容器样式 */
+.game-container {
+  position: relative;
+  width: 100%;
+  padding-top: 75%; /* 4:3 比例 */
+  background: #fff;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  margin: 0 0 20px 0; /* 移除顶部边距，保留底部边距 */
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  /* 重要：确保子元素可以正确定位 */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  /* 预防浏览器中的一些奇怪行为 */
+  will-change: transform;
+}
+
+/* 状态栏样式 */
+.processing-status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.status-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.status-info {
+  flex: 1;
+}
+
+.status-bar {
+  height: 6px;
+  background-color: #EBEEF5;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.status-bar-inner {
+  height: 100%;
+  transition: width var(--transition-duration) ease;
+}
+
+.status-text {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 14px;
+  color: #606266;
+  transition: opacity var(--transition-duration);
+}
+
+.status-text.fading {
+  opacity: 0.5;
+}
+
+/* 完成消息样式 */
+.completion-message {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.completion-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.completion-icon.error {
+  color: var(--danger-color);
+}
+
+/* 底部按钮样式 */
+.dialog-footer {
+  padding: 20px 24px;
+  text-align: right;
+  border-top: 1px solid #EBEEF5;
+}
+
+.wait-message {
+  color: #909399;
+  margin: 0;
+  font-size: 14px;
+}
+
+/* 加载动画 */
+.rotating {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 状态特定样式 */
+.feedback-progress-dialog.completed :deep(.el-dialog) {
+  border: 2px solid var(--success-color);
+}
+
+.feedback-progress-dialog.failed :deep(.el-dialog) {
+  border: 2px solid var(--danger-color);
+}
+
+/* 按钮图标样式 */
+.btn-icon {
+  margin-right: 4px;
+}
+
+/* 响应式调整 */
+@media screen and (max-width: 768px) {
+  .feedback-progress-dialog :deep(.el-dialog) {
+    width: 90% !important;
+    margin: 5vh auto !important;
+  }
+  
+  .game-container {
+    margin: 0 0 10px 0; /* 移除顶部边距，保留底部边距 */
+  }
+}

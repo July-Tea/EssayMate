@@ -1,0 +1,27 @@
+{
+  "name": "essaymate",
+  "version": "0.0.1",
+  "description": "EssayMate - 一个作文辅助工具",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "start": "node banner.js && concurrently -n \"Frontend,Backend\" -c \"green,blue\" \"cd frontend && npm run dev\" \"cd backend && npm run dev\"",
+    "dev": "npm run start",
+    "build": "npm run build --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "sqlite3": "^5.1.7",
+    "vite-plugin-top-level-await": "^1.5.0",
+    "vite-plugin-wasm": "^3.4.1"
+  },
+  "dependencies": {
+    "marked": "^15.0.8",
+    "mitt": "^3.0.1",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.21"
+  }
+}

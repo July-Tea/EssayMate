@@ -1,0 +1,421 @@
+/* 基础卡片样式 */
+.annotation-tooltip {
+  position: fixed;
+  z-index: 10000;
+  width: 320px;
+  max-width: 90vw;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08), 0 3px 6px rgba(0, 0, 0, 0.04);
+  padding: 0;
+  font-size: 14px;
+  color: #2c3e50;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(235, 238, 245, 0.8);
+}
+
+/* 箭头指示器 */
+.tooltip-arrow {
+  position: absolute;
+  top: -8px;
+  width: 16px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.tooltip-arrow::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: white;
+  transform: translateY(50%) rotate(45deg);
+  top: 0;
+  left: 2px;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 选项卡样式 */
+.tooltip-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(230, 230, 230, 0.8);
+  background-color: rgba(250, 250, 250, 0.9);
+}
+
+.tab-item {
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-item:hover {
+  background-color: rgba(240, 240, 240, 0.8);
+}
+
+.tab-item.active {
+  background-color: white;
+  position: relative;
+}
+
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  transition: all 0.3s ease;
+}
+
+.tab-item.active.correction::after {
+  background-color: #F56C6C;
+}
+
+.tab-item.active.suggestion::after {
+  background-color: #67C23A;
+}
+
+.tab-item.active.highlight::after {
+  background-color: #E6A23C;
+}
+
+.tab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: rgba(240, 240, 240, 0.6);
+  flex-shrink: 0;
+}
+
+.tab-icon.correction {
+  color: #F56C6C;
+}
+
+.tab-icon.suggestion {
+  color: #67C23A;
+}
+
+.tab-icon.highlight {
+  color: #E6A23C;
+}
+
+.tab-type {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* 内容区域样式 */
+.tooltip-content-wrapper {
+  padding: 0;
+  overflow: hidden;
+}
+
+.tooltip-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid rgba(235, 238, 245, 0.8);
+}
+
+.tooltip-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tooltip-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+.tooltip-badge.correction {
+  background-color: rgba(245, 108, 108, 0.1);
+  color: #F56C6C;
+}
+
+.tooltip-badge.suggestion {
+  background-color: rgba(103, 194, 58, 0.1);
+  color: #67C23A;
+}
+
+.tooltip-badge.highlight {
+  background-color: rgba(230, 162, 60, 0.1);
+  color: #E6A23C;
+}
+
+.tooltip-type {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.tooltip-type.correction {
+  color: #F56C6C;
+}
+
+.tooltip-type.suggestion {
+  color: #67C23A;
+}
+
+.tooltip-type.highlight {
+  color: #E6A23C;
+}
+
+.tooltip-content {
+  padding: 16px;
+  line-height: 1.6;
+  padding-bottom: 20px; /* 增加底部内边距 */
+}
+
+.error-content {
+  margin: 0 0 16px;
+  color: #2c3e50;
+}
+
+.suggestion-section {
+  margin-top: 16px;
+}
+
+.suggestion-divider {
+  position: relative;
+  text-align: center;
+  margin: 10px 0;
+  height: 16px;
+  line-height: 16px;
+}
+
+.suggestion-divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 1px;
+  background-color: rgba(235, 238, 245, 0.8);
+  z-index: 1;
+}
+
+.divider-label {
+  position: relative;
+  z-index: 2;
+  padding: 0 12px;
+  background-color: white;
+  font-size: 12px;
+  color: #909399;
+  font-weight: 500;
+}
+
+.suggestion-content {
+  color: #2c3e50; /* 改为黑色，与正文保持一致 */
+  margin: 12px 0 0;
+}
+
+/* 动画效果 */
+.tooltip-fade-enter-active,
+.tooltip-fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.tooltip-fade-enter-from,
+.tooltip-fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.card-slide-enter-active,
+.card-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.card-slide-enter-from {
+  opacity: 0;
+  transform: translateX(15px);
+}
+
+.card-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-15px);
+}
+
+
+/* 加强 highlight 类型的强调色 */
+.tooltip-badge.highlight {
+  background-color: rgba(230, 162, 60, 0.2) !important;
+  color: #E6A23C !important;
+}
+
+.tooltip-type.highlight {
+  color: #E6A23C !important;
+}
+
+/* 确保三种批注类型图标风格一致 */
+.tooltip-badge.correction,
+.tooltip-badge.suggestion,
+.tooltip-badge.highlight {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 确保卡片标题颜色与外部划线保持一致 */
+.tooltip-type.correction {
+  color: #F56C6C !important;
+}
+
+.tooltip-type.suggestion {
+  color: #67C23A !important;
+}
+
+.tooltip-type.highlight {
+  color: #E6A23C !important;
+}
+
+/* 确保默认批注也有对应颜色 */
+.tooltip-badge {
+  color: #E6A23C !important;
+  background-color: rgba(230, 162, 60, 0.2) !important;
+}
+
+.tooltip-type {
+  color: #E6A23C !important;
+}
+
+/* 当有明确类型时，覆盖默认颜色 */
+.tooltip-badge.correction {
+  background-color: rgba(245, 108, 108, 0.2) !important;
+  color: #F56C6C !important;
+}
+
+.tooltip-badge.suggestion {
+  background-color: rgba(103, 194, 58, 0.2) !important;
+  color: #67C23A !important;
+}
+
+
+/* 加强 highlight 类型的强调色 */
+.tooltip-badge.highlight {
+  background-color: rgba(230, 162, 60, 0.2) !important;
+  color: #E6A23C !important;
+}
+
+.tooltip-type.highlight {
+  color: #E6A23C !important;
+}
+
+/* 确保三种批注类型图标风格一致 */
+.tooltip-badge.correction,
+.tooltip-badge.suggestion,
+.tooltip-badge.highlight,
+.tooltip-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 确保卡片标题颜色与外部划线保持一致 */
+.tooltip-type.correction {
+  color: #F56C6C !important;
+}
+
+.tooltip-type.suggestion {
+  color: #67C23A !important;
+}
+
+.tooltip-type.highlight {
+  color: #E6A23C !important;
+}
+
+/* 确保默认批注也有对应颜色 */
+.tooltip-badge {
+  color: #E6A23C !important;
+  background-color: rgba(230, 162, 60, 0.2) !important;
+}
+
+.tooltip-type {
+  color: #E6A23C !important;
+}
+
+/* 默认tab图标样式 */
+.tab-icon {
+  color: #E6A23C !important;
+  background-color: rgba(230, 162, 60, 0.1) !important;
+}
+
+/* 当有明确类型时，覆盖默认颜色 */
+.tooltip-badge.correction {
+  background-color: rgba(245, 108, 108, 0.2) !important;
+  color: #F56C6C !important;
+}
+
+.tooltip-badge.suggestion {
+  background-color: rgba(103, 194, 58, 0.2) !important;
+  color: #67C23A !important;
+}
+
+.tab-icon.correction {
+  color: #F56C6C !important;
+}
+
+.tab-icon.suggestion {
+  color: #67C23A !important;
+}
+
+.tab-icon.highlight {
+  color: #E6A23C !important;
+}
+
+
+/* 滚动内容区域样式 - 隐藏滚动条但保留功能 */
+.tooltip-content-wrapper.scroll-content {
+  overflow-y: auto;
+  
+  /* 隐藏滚动条 - Firefox */
+  scrollbar-width: none;
+  
+  /* 确保内容不被截断 */
+  padding-right: 5px;
+}
+
+/* 隐藏滚动条 - Chrome, Safari, Edge */
+.tooltip-content-wrapper.scroll-content::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+  display: none;
+}
+
+/* 确保滚动仅适用于内容区域，而不是整个卡片 */
+.tooltip-card {
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+}
+
+.tooltip-header {
+  flex-shrink: 0; /* 标题不缩小 */
+}
+
+.tooltip-content-wrapper {
+  flex-grow: 1;
+  overflow: hidden;
+}

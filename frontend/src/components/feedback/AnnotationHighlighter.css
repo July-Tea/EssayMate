@@ -1,0 +1,124 @@
+.annotation-highlighter {
+  position: relative;
+  line-height: 1.6;
+  font-size: 16px;
+}
+
+:deep(.annotated-text) {
+  position: relative;
+  background-color: rgba(255, 235, 59, 0.15);
+  border-bottom: 2px solid rgba(255, 193, 7, 0.7);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border-radius: 2px;
+  padding: 0 1px;
+  margin: 0 1px;
+}
+
+:deep(.annotated-text:hover) {
+  background-color: rgba(255, 235, 59, 0.35);
+  border-bottom-color: rgba(255, 193, 7, 0.9);
+  box-shadow: 0 1px 2px rgba(255, 193, 7, 0.2);
+}
+
+/* 活动批注高亮基础样式 */
+:deep(.annotated-text.active-annotation) {
+  background-color: rgba(255, 235, 59, 0.55);
+  border-bottom: 3px solid rgba(255, 193, 7, 1);
+  box-shadow: 0 1px 4px rgba(255, 193, 7, 0.35);
+  animation: pulse-highlight 1.5s infinite alternate ease-in-out;
+  z-index: 1;
+}
+
+/* 根据活动批注类型自定义样式 */
+:deep(.annotated-text.active-annotation[data-active-type="correction"]) {
+  background-color: rgba(245, 108, 108, 0.55);
+  border-bottom: 3px solid rgba(245, 108, 108, 1);
+  box-shadow: 0 1px 4px rgba(245, 108, 108, 0.35);
+  animation: pulse-correction 1.5s infinite alternate ease-in-out;
+}
+
+:deep(.annotated-text.active-annotation[data-active-type="suggestion"]) {
+  background-color: rgba(103, 194, 58, 0.55);
+  border-bottom: 3px solid rgba(103, 194, 58, 1);
+  box-shadow: 0 1px 4px rgba(103, 194, 58, 0.35);
+  animation: pulse-suggestion 1.5s infinite alternate ease-in-out;
+}
+
+:deep(.annotated-text.active-annotation[data-active-type="highlight"]) {
+  background-color: rgba(230, 162, 60, 0.55);
+  border-bottom: 3px solid rgba(230, 162, 60, 1);
+  box-shadow: 0 1px 4px rgba(230, 162, 60, 0.35);
+  animation: pulse-highlight-annotation 1.5s infinite alternate ease-in-out;
+}
+
+/* 修改动画效果以增强可视性 */
+@keyframes pulse-correction {
+  0% {
+    box-shadow: 0 1px 3px rgba(245, 108, 108, 0.35);
+  }
+  100% {
+    box-shadow: 0 1px 6px rgba(245, 108, 108, 0.6);
+  }
+}
+
+@keyframes pulse-suggestion {
+  0% {
+    box-shadow: 0 1px 3px rgba(103, 194, 58, 0.35);
+  }
+  100% {
+    box-shadow: 0 1px 6px rgba(103, 194, 58, 0.6);
+  }
+}
+
+@keyframes pulse-highlight-annotation {
+  0% {
+    box-shadow: 0 1px 3px rgba(230, 162, 60, 0.35);
+  }
+  100% {
+    box-shadow: 0 1px 6px rgba(230, 162, 60, 0.6);
+  }
+}
+
+@keyframes pulse-highlight {
+  0% {
+    box-shadow: 0 1px 3px rgba(255, 193, 7, 0.35);
+  }
+  100% {
+    box-shadow: 0 1px 6px rgba(255, 193, 7, 0.6);
+  }
+}
+
+/* 不同类型的批注样式 */
+:deep(.annotated-text[data-annotation-type="correction"]) {
+  background-color: rgba(245, 108, 108, 0.15);
+  border-bottom: 2px solid rgba(245, 108, 108, 0.6);
+}
+
+:deep(.annotated-text[data-annotation-type="correction"]:hover) {
+  background-color: rgba(245, 108, 108, 0.25);
+  border-bottom-color: rgba(245, 108, 108, 0.8);
+  box-shadow: 0 1px 2px rgba(245, 108, 108, 0.2);
+}
+
+:deep(.annotated-text[data-annotation-type="suggestion"]) {
+  background-color: rgba(103, 194, 58, 0.15);
+  border-bottom: 2px solid rgba(103, 194, 58, 0.6);
+}
+
+:deep(.annotated-text[data-annotation-type="suggestion"]:hover) {
+  background-color: rgba(103, 194, 58, 0.25);
+  border-bottom-color: rgba(103, 194, 58, 0.8);
+  box-shadow: 0 1px 2px rgba(103, 194, 58, 0.2);
+}
+
+:deep(.annotated-text[data-annotation-type="highlight"]) {
+  background-color: rgba(230, 162, 60, 0.15);
+  border-bottom: 2px solid rgba(230, 162, 60, 0.6);
+}
+
+:deep(.annotated-text[data-annotation-type="highlight"]:hover) {
+  background-color: rgba(230, 162, 60, 0.25);
+  border-bottom-color: rgba(230, 162, 60, 0.8);
+  box-shadow: 0 1px 2px rgba(230, 162, 60, 0.2);
+}

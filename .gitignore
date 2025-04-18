@@ -1,0 +1,5 @@
+.DS_Store
+node_modules/
+
+# 用来调试的脚本 / Scripts for debugging
+scripts/
