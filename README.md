@@ -17,7 +17,8 @@ EssayMate is an AI-powered IELTS / TOEFL / GRE essay correction assistant that p
 
 ### 环境要求 | Prerequisites
 > 推荐使用 nvm 进行版本管理 / recommended to use nvm for version management
-- Node.js 18.20.7
+
+此项目需要 Node.js 18.20.7 / This project requires Node.js 18.20.7.
 
 ### 项目安装与启动 | Project Installation and Startup
 
@@ -99,3 +100,6 @@ This project is licensed under the Creative Commons Attribution-NonCommercial-Sh
 
 ## 💡 特别鸣谢 | Special Thanks
 感谢 Iconfont 的优质SVG资源 / Thanks to Iconfont for providing high-quality SVG resources.
+
+## 📮 联系方式 ｜ Contact Information
+欢迎联系juratjan123@outlook.com / Feel free to reach out to juratjan123@outlook.com.
