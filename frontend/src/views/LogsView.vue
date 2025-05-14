@@ -466,6 +466,7 @@ const getRequestTypeLabel = (requestType: string): string => {
   if (requestType === 'feedback') return '批改反馈';
   if (requestType === 'annotation') return '段落批注';
   if (requestType === 'example_essay') return '生成范文';
+  if (requestType === 'chat') return '随心问';
   return requestType || '-';
 };
 
@@ -474,6 +475,7 @@ const getRequestTypeTagType = (requestType: string): string => {
   if (requestType === 'feedback') return 'success';
   if (requestType === 'annotation') return 'warning';
   if (requestType === 'example_essay') return 'info';
+  if (requestType === 'chat') return 'primary';
   return 'info';
 };
 

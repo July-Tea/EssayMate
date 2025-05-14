@@ -454,7 +454,7 @@ const getPlaceholderText = (): string => {
             <img src="./../../assets/icon.svg" alt="Logo" class="about-logo"/>
             <div class="about-title">
               <h2>EssayMate</h2>
-              <span class="version">Version 0.1.0</span>
+              <span class="version">Version 0.1.1</span>
             </div>
           </div>
 

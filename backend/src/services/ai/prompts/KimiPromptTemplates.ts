@@ -8,11 +8,13 @@ import { PromptConfig } from './PromptTemplate';
 import IELTSTask1Feedback from './models/kimi/ielts/task1/feedback';
 import IELTSTask1Annotation from './models/kimi/ielts/task1/annotation';
 import { exampleEssayPrompt as IELTSTask1Example } from './models/kimi/ielts/task1/example';
+import { feedbackPrompt as IELTSTask1Chat } from './models/kimi/ielts/task1/chat';
 
 // 雅思Task2模板
 import IELTSTask2Feedback from './models/kimi/ielts/task2/feedback';
 import IELTSTask2Annotation from './models/kimi/ielts/task2/annotation';
 import { exampleEssayPrompt as IELTSTask2Example } from './models/kimi/ielts/task2/example';
+import { feedbackPrompt as IELTSTask2Chat } from './models/kimi/ielts/task2/chat';
 
 // 托福模板
 import TOEFLFeedback from './models/kimi/toefl/feedback';
@@ -25,11 +27,13 @@ export {
   IELTSTask1Feedback,
   IELTSTask1Annotation,
   IELTSTask1Example,
+  IELTSTask1Chat,
   
   // 雅思Task2
   IELTSTask2Feedback,
   IELTSTask2Annotation,
   IELTSTask2Example,
+  IELTSTask2Chat,
   
   // 托福
   TOEFLFeedback,

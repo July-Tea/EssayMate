@@ -247,3 +247,275 @@ export const projectApi = {
     }
   },
 }; 
+
+// 添加聊天API
+export const chatApi = {
+  // 获取聊天历史
+  async getChatHistory(projectId: number, versionNumber: number, sessionId?: string) {
+    const url = sessionId 
+      ? `${API_BASE_URL}/chat/${projectId}/${versionNumber}?sessionId=${sessionId}`
+      : `${API_BASE_URL}/chat/${projectId}/${versionNumber}`;
+    
+    try {
+      const response = await axios.get(url);
+      return response.data.data;
+    } catch (error) {
+      console.error('获取聊天历史失败:', error);
+      throw error;
+    }
+  },
+  
+  // 创建新的聊天会话
+  async createChatSession(projectId: number, versionNumber: number) {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/chat/session/${projectId}/${versionNumber}`);
+      return response.data.data.sessionId;
+    } catch (error) {
+      console.error('创建聊天会话失败:', error);
+      throw error;
+    }
+  },
+  
+  // 发送聊天消息
+  async sendMessage(data: {
+    projectId: number;
+    versionNumber: number;
+    sessionId: string;
+    message: string;
+    parentId?: string;
+    examType?: string;
+    taskType?: string;
+    title?: string;
+    content?: string;
+  }) {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/chat/send`, data);
+      return response.data.data;
+    } catch (error) {
+      console.error('发送聊天消息失败:', error);
+      throw error;
+    }
+  },
+  
+  // 流式发送聊天消息
+  sendMessageStream(data: {
+    projectId: number;
+    versionNumber: number;
+    sessionId: string;
+    message: string;
+    parentId?: string;
+    examType?: string;
+    taskType?: string;
+    title?: string;
+    content?: string;
+  }, callbacks: {
+    onStart?: (messageId: string, requestId: string) => void;
+    onChunk?: (chunk: { content: string, messageId: string }) => void;
+    onComplete?: (fullContent: string) => void;
+    onError?: (error: any) => void;
+  }) {
+    // 创建一个URLSearchParams对象来构建查询参数
+    const params = new URLSearchParams();
+    
+    // 将所有数据添加到查询参数中
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        params.append(key, String(value));
+      }
+    });
+    
+    // 构建URL，使用POST方法，所以不添加查询参数
+    const url = `${API_BASE_URL}/chat/send-stream`;
+    
+    // 初始化EventSource以取消连接
+    let eventSource: EventSource | null = null;
+    
+    // 创建一个AbortController来取消fetch请求
+    const controller = new AbortController();
+    
+    // 用于记录完整内容
+    let fullContent = '';
+    
+    // 保存requestId
+    let currentRequestId = '';
+    
+    // 使用fetch API发送POST请求，并返回一个清理函数
+    const cleanup = fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+      signal: controller.signal
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      
+      // 获取响应的reader，用于读取流
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder('utf-8');
+      
+      // 处理流数据
+      function processStream(): Promise<void> {
+        return reader.read().then(({ done, value }) => {
+          if (done) {
+            // 流结束，尝试更新日志
+            if (currentRequestId && fullContent) {
+              // 简单估算token数量
+              const promptTokens = Math.ceil((data.message.length + 50) / 4);
+              const completionTokens = Math.ceil(fullContent.length / 4);
+              
+              // 异步更新日志，不等待结果
+              chatApi.updateStreamLog(currentRequestId, fullContent, {
+                promptTokens,
+                completionTokens,
+                totalTokens: promptTokens + completionTokens
+              }).catch(e => console.error('更新流式日志失败:', e));
+            }
+            
+            // 调用完成回调
+            callbacks.onComplete?.(fullContent);
+            return;
+          }
+          
+          // 解码二进制数据为文本
+          const chunk = decoder.decode(value, { stream: true });
+          
+          // 解析SSE格式数据
+          const lines = chunk.split('\n\n');
+          
+          for (const line of lines) {
+            if (!line.trim() || !line.startsWith('data:')) continue;
+            
+            try {
+              // 提取JSON数据
+              const jsonData = line.replace(/^data: /, '').trim();
+              const parsedData = JSON.parse(jsonData);
+              
+              // 根据消息类型处理
+              if (parsedData.type === 'init') {
+                // 初始化消息，保存requestId
+                currentRequestId = parsedData.requestId;
+                
+                // 初始化消息
+                callbacks.onStart?.(parsedData.messageId, parsedData.requestId);
+              } else if (parsedData.type === 'chunk') {
+                // 累积完整内容
+                fullContent += parsedData.content;
+                
+                // 内容片段
+                callbacks.onChunk?.(parsedData);
+              } else if (parsedData.type === 'error') {
+                // 错误消息
+                callbacks.onError?.(new Error(parsedData.error));
+                return; // 停止处理流
+              } else if (parsedData.type === 'done') {
+                // 流结束，尝试更新日志
+                if (currentRequestId && fullContent) {
+                  // 简单估算token数量
+                  const promptTokens = Math.ceil((data.message.length + 50) / 4);
+                  const completionTokens = Math.ceil(fullContent.length / 4);
+                  
+                  // 异步更新日志，不等待结果
+                  chatApi.updateStreamLog(currentRequestId, fullContent, {
+                    promptTokens,
+                    completionTokens,
+                    totalTokens: promptTokens + completionTokens
+                  }).catch(e => console.error('更新流式日志失败:', e));
+                }
+                
+                // 完成
+                callbacks.onComplete?.(fullContent);
+                return; // 停止处理流
+              }
+            } catch (error) {
+              console.error('解析SSE数据失败:', error, line);
+            }
+          }
+          
+          // 继续处理流
+          return processStream();
+        }).catch(error => {
+          callbacks.onError?.(error);
+        });
+      }
+      
+      // 开始处理流
+      return processStream();
+    })
+    .catch(error => {
+      callbacks.onError?.(error);
+    });
+    
+    // 返回一个函数，用于取消请求
+    return () => {
+      controller.abort();
+      
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+    };
+  },
+  
+  // 更新流式聊天日志
+  async updateStreamLog(
+    requestId: string,
+    content: string,
+    tokenUsage: {
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+    }
+  ) {
+    try {
+      // 创建模拟的原始响应数据
+      const rawResponse = {
+        type: 'stream_result',
+        usage: {
+          prompt_tokens: tokenUsage.promptTokens,
+          completion_tokens: tokenUsage.completionTokens,
+          total_tokens: tokenUsage.totalTokens
+        },
+        timestamp: new Date().toISOString()
+      };
+      
+      // 发送请求更新日志
+      await axios.post(`${API_BASE_URL}/chat/update-stream-log`, {
+        requestId,
+        content,
+        rawResponse,
+        tokenUsage
+      });
+      
+      console.log('成功更新流式聊天日志');
+    } catch (error) {
+      console.error('更新流式聊天日志失败:', error);
+      throw error;
+    }
+  },
+  
+  // 删除消息
+  async deleteMessage(messageId: string) {
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/chat/message/${messageId}`);
+      return response.data;
+    } catch (error) {
+      console.error('删除消息失败:', error);
+      throw error;
+    }
+  },
+  
+  // 删除会话
+  async deleteSession(sessionId: string) {
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/chat/session/${sessionId}`);
+      return response.data;
+    } catch (error) {
+      console.error('删除会话失败:', error);
+      throw error;
+    }
+  }
+}; 

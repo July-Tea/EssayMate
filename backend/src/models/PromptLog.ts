@@ -46,7 +46,7 @@ export class PromptLogModel {
     serviceType: string;
     modelName: string;
     requestId: string;
-    requestType: 'feedback' | 'annotation' | 'example_essay';
+    requestType: 'feedback' | 'annotation' | 'example_essay' | 'chat';
     paragraphInfo: string;
     projectId?: number;
     versionNumber?: number;
@@ -83,7 +83,7 @@ export class PromptLogModel {
 
   async logPrompt(
     requestId: string,
-    requestType: 'feedback' | 'annotation' | 'example_essay',
+    requestType: 'feedback' | 'annotation' | 'example_essay' | 'chat',
     paragraphInfo: string,
     projectId: number | undefined,
     versionNumber: number | undefined,
@@ -268,6 +268,132 @@ export class PromptLogModel {
       return log || null;
     } catch (error) {
       console.error(`查询日志ID=${id}失败:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 根据请求ID查询日志
+   */
+  async findByRequestId(requestId: string): Promise<LogItem | null> {
+    return new Promise((resolve, reject) => {
+      this.db.get(
+        `SELECT * FROM prompt_logs WHERE request_id = ?`,
+        [requestId],
+        (err, row) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(row as LogItem || null);
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * 根据消息ID查找日志记录
+   * 用于流式输出时查找相关日志
+   */
+  async findByMessageId(messageId: string): Promise<LogItem[]> {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT * FROM prompt_logs WHERE JSON_EXTRACT(raw_response, '$.messageId') = ? OR prompt_content LIKE ?`,
+        [messageId, `%${messageId}%`],
+        (err, rows) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(rows as LogItem[] || []);
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * 更新日志记录
+   */
+  async updateByRequestId(
+    requestId: string,
+    data: {
+      responseContent?: string;
+      rawResponse?: string;
+      tokenUsage?: number;
+      tokenUsageDetail?: {
+        promptTokens: number;
+        completionTokens: number;
+        totalTokens: number;
+      };
+      status?: 'success' | 'error';
+      errorMessage?: string;
+    }
+  ): Promise<void> {
+    try {
+      const updateFields: string[] = [];
+      const values: any[] = [];
+
+      // 构建更新字段
+      if (data.responseContent !== undefined) {
+        updateFields.push('response_content = ?');
+        values.push(data.responseContent);
+      }
+
+      if (data.rawResponse !== undefined) {
+        updateFields.push('raw_response = ?');
+        values.push(data.rawResponse);
+      }
+
+      if (data.tokenUsage !== undefined) {
+        updateFields.push('total_tokens = ?');
+        values.push(data.tokenUsage);
+      }
+
+      if (data.tokenUsageDetail) {
+        if (data.tokenUsageDetail.promptTokens !== undefined) {
+          updateFields.push('prompt_tokens = ?');
+          values.push(data.tokenUsageDetail.promptTokens);
+        }
+        
+        if (data.tokenUsageDetail.completionTokens !== undefined) {
+          updateFields.push('completion_tokens = ?');
+          values.push(data.tokenUsageDetail.completionTokens);
+        }
+      }
+
+      if (data.status) {
+        updateFields.push('status = ?');
+        values.push(data.status);
+      }
+
+      if (data.errorMessage !== undefined) {
+        updateFields.push('error_message = ?');
+        values.push(data.errorMessage);
+      }
+
+      // 如果没有需要更新的字段，直接返回
+      if (updateFields.length === 0) {
+        return;
+      }
+
+      // 添加请求ID
+      values.push(requestId);
+
+      // 执行更新
+      await new Promise<void>((resolve, reject) => {
+        this.db.run(
+          `UPDATE prompt_logs SET ${updateFields.join(', ')} WHERE request_id = ?`,
+          values,
+          (err) => {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      });
+
+      console.log(`成功更新请求ID=${requestId}的日志记录`);
+    } catch (error) {
+      console.error(`更新请求ID=${requestId}的日志记录失败:`, error);
       throw error;
     }
   }

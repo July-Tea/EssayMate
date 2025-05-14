@@ -342,6 +342,33 @@ export const initializeDatabase = async (retries = 5): Promise<void> => {
           console.log("提示日志表创建成功!");
         }
         
+        // 检查聊天消息表是否存在
+        const chatMessagesTableExists = await queryRunner.hasTable("chat_messages");
+        if (!chatMessagesTableExists) {
+          console.log("正在创建聊天消息表...");
+          await queryRunner.query(`
+            CREATE TABLE chat_messages (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              project_id INTEGER NOT NULL,
+              version_number INTEGER NOT NULL,
+              session_id TEXT NOT NULL,
+              parent_id TEXT,
+              message_id TEXT NOT NULL,
+              role TEXT NOT NULL,
+              content TEXT NOT NULL,
+              status TEXT NOT NULL,
+              error_message TEXT,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            )
+          `);
+          await queryRunner.query(`
+            CREATE INDEX idx_chat_messages_project ON chat_messages(project_id, version_number);
+            CREATE INDEX idx_chat_messages_session ON chat_messages(session_id);
+          `);
+          console.log("聊天消息表创建成功!");
+        }
+        
         await queryRunner.release();
       } catch (syncError) {
         console.error("数据库同步过程中出错:", syncError);

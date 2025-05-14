@@ -7,6 +7,7 @@ import { projectRouter } from './routes/project';
 import { aiRouter } from './routes/ai';
 import { aiFeedbackRouter } from './routes/aiFeedback';
 import { exampleEssayRouter } from './routes/exampleEssay';
+import { chatRouter } from './routes/chat';
 import { default as configRouter } from './routes/config';
 import { default as logsRouter } from './routes/logs';
 import { initializeDatabase } from './data-source';
@@ -25,6 +26,7 @@ app.use('/api/projects', projectRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/ai-feedback', aiFeedbackRouter);
 app.use('/api/example-essays', exampleEssayRouter);
+app.use('/api/chat', chatRouter);
 app.use('/api/config', configRouter);
 app.use('/api/logs', logsRouter);
 

@@ -7,11 +7,13 @@
 import { feedbackPrompt as IELTSTask1Feedback } from './models/doubao/ielts/task1/feedback';
 import { annotationPrompt as IELTSTask1Annotation } from './models/doubao/ielts/task1/annotation';
 import { exampleEssayPrompt as IELTSTask1Example } from './models/doubao/ielts/task1/example';
+import { feedbackPrompt as IELTSTask1Chat } from './models/doubao/ielts/task1/chat';
 
 // 雅思Task2模板
 import { feedbackPrompt as IELTSTask2Feedback } from './models/doubao/ielts/task2/feedback';
 import { annotationPrompt as IELTSTask2Annotation } from './models/doubao/ielts/task2/annotation';
 import { exampleEssayPrompt as IELTSTask2Example } from './models/doubao/ielts/task2/example';
+import { feedbackPrompt as IELTSTask2Chat } from './models/doubao/ielts/task2/chat';
 
 // 托福模板
 import { exampleEssayPrompt as TOEFLExample } from './models/doubao/toefl/example';
@@ -24,11 +26,13 @@ export {
   IELTSTask1Feedback,
   IELTSTask1Annotation,
   IELTSTask1Example,
+  IELTSTask1Chat,
   
   // 雅思Task2
   IELTSTask2Feedback,
   IELTSTask2Annotation,
   IELTSTask2Example,
+  IELTSTask2Chat,
   
   // 托福
   TOEFLExample,

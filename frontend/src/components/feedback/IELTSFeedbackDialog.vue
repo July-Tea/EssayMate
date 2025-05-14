@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { ArrowLeft, ArrowRight, Edit, Delete, Calendar, Star, InfoFilled, ArrowUp, Close, Check, Picture, QuestionFilled } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, Edit, Delete, Calendar, Star, InfoFilled, ArrowUp, Close, Check, Picture, QuestionFilled, ChatDotRound, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import type { FeedbackData, ScoreDimension, Version, Annotation } from '@/types/feedback'
-import { projectApi } from '@/api/project'
+import { projectApi, chatApi } from '@/api/project'
 import AnnotationHighlighter from './AnnotationHighlighter.vue'
 import FeedbackProgress from './FeedbackProgress.vue'
 // 导入confetti
@@ -69,6 +69,39 @@ watch(() => props.visible, (newVisible) => {
     }
     isDialogFirstOpen.value = true
     
+    // 当对话框打开时，预加载聊天记录以确保聊天功能正确初始化
+    if (props.currentProject?.id && props.versions?.length) {
+      const projectId = typeof props.currentProject.id === 'string' 
+        ? parseInt(props.currentProject.id) 
+        : props.currentProject.id;
+      const versionNumber = props.versions[currentVersionIndex.value].versionNumber;
+      
+      // 预先加载聊天会话，但不显示AI面板
+      chatApi.getChatHistory(projectId, versionNumber)
+        .then(history => {
+          if (history && history.length > 0) {
+            // 有聊天记录，保存会话ID
+            if (history[0].session_id) {
+              currentSessionId.value = history[0].session_id;
+            }
+          } else {
+            // 没有聊天记录，创建新会话（静默处理）
+            chatApi.createChatSession(projectId, versionNumber)
+              .then(sessionId => {
+                currentSessionId.value = sessionId;
+              })
+              .catch(error => {
+                console.error('预创建聊天会话失败:', error);
+                // 生成临时会话ID作为备用
+                currentSessionId.value = generateId();
+              });
+          }
+        })
+        .catch(error => {
+          console.error('预加载聊天记录失败:', error);
+        });
+    }
+    
     // 打开对话框时，输出项目和版本信息
     if (props.versions?.length && props.currentProject) {
       const version = props.versions[currentVersionIndex.value];
@@ -108,7 +141,7 @@ watch(() => props.versions, (newVersions) => {
   }
 }, { immediate: true })
 
-// 监听 currentVersionIndex 变化，在版本切换时输出信息
+// 监听 currentVersionIndex 变化，在版本切换时输出信息和重新初始化聊天
 watch(() => currentVersionIndex.value, (newIndex) => {
   if (props.visible && props.versions?.length && props.currentProject) {
     const version = props.versions[newIndex];
@@ -127,6 +160,43 @@ watch(() => currentVersionIndex.value, (newIndex) => {
       // 单独输出annotations信息
       // // console.log(`项目${props.currentProject.id}，版本${version.versionNumber}的annotations数据:`, 
       //   feedback.annotations || '无批注数据');
+    }
+    
+    // 版本变更后，预初始化聊天会话
+    const projectId = typeof props.currentProject.id === 'string' 
+      ? parseInt(props.currentProject.id) 
+      : props.currentProject.id;
+    const versionNumber = version.versionNumber;
+    
+    // 预先加载新版本的聊天记录（不管AI面板是否打开）
+    currentSessionId.value = ''; // 重置会话ID以触发重新加载
+    
+    // 只在面板打开时才实际加载内容
+    if (showAIChatPanel.value) {
+      loadChatHistory();
+    } else {
+      // 面板未打开时只静默预加载会话ID
+      chatApi.getChatHistory(projectId, versionNumber)
+        .then(history => {
+          if (history && history.length > 0) {
+            // 有聊天记录，保存会话ID
+            if (history[0].session_id) {
+              currentSessionId.value = history[0].session_id;
+            }
+          } else {
+            // 没有聊天记录，创建新会话（静默处理）
+            chatApi.createChatSession(projectId, versionNumber)
+              .then(sessionId => {
+                currentSessionId.value = sessionId;
+              })
+              .catch(error => {
+                console.error('预创建聊天会话失败:', error);
+              });
+          }
+        })
+        .catch(error => {
+          console.error('预加载聊天记录失败:', error);
+        });
     }
   }
 })
@@ -863,6 +933,9 @@ const fetchExampleEssay = async () => {
 // 切换范文显示
 const toggleExampleEssay = async () => {
   if (!showExampleEssay.value) {
+    // 如果AI面板已打开并且范文将被打开，关闭AI面板
+    // 这里不关闭AI面板，而是让范文覆盖在AI面板上方
+    
     // 如果还没有加载范文，需要先获取
     if (!exampleEssayContent.value) {
       await fetchExampleEssay()
@@ -938,6 +1011,500 @@ const renderMarkdown = (content: string) => {
     console.error('Markdown渲染错误:', error)
     return content
   }
+}
+
+// 添加AI对话面板相关状态
+const showAIChatPanel = ref(false)
+const chatMessages = ref<{
+  id: string,
+  role: 'user' | 'assistant' | 'system', 
+  content: string,
+  status?: 'sending' | 'sent' | 'error',
+  timestamp: number
+}[]>([])
+const chatInputValue = ref('')
+const isSendingMessage = ref(false)
+const isRobotVisible = ref(true)
+const aiTyping = ref(false)
+const currentSessionId = ref<string>('')
+// 添加变量保存当前流请求的取消函数
+const currentStreamCancelFn = ref<(() => void) | null>(null)
+// 添加存储消息请求ID的变量
+const currentRequestId = ref<string>('')
+
+// 生成唯一ID
+const generateId = () => {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// 定义加载聊天历史的方法
+const loadChatHistory = async () => {
+  try {
+    if (!props.currentProject.id || !currentVersion.value) {
+      console.error('加载聊天历史失败: 缺少项目ID或版本信息');
+      return;
+    }
+    
+    const projectId = typeof props.currentProject.id === 'string' 
+      ? parseInt(props.currentProject.id) 
+      : props.currentProject.id;
+    const versionNumber = currentVersion.value.versionNumber;
+    
+    // 如果已有会话ID并且不为空
+    if (currentSessionId.value) {
+      try {
+        // 使用已有的会话ID获取历史
+        const sessionHistory = await chatApi.getChatHistory(projectId, versionNumber, currentSessionId.value);
+        
+        if (sessionHistory && sessionHistory.length > 0) {
+          // 转换为前端使用的格式
+          chatMessages.value = sessionHistory.map((msg: { 
+            message_id: string; 
+            role: 'user' | 'assistant' | 'system'; 
+            content: string; 
+            status: 'sending' | 'sent' | 'error';
+            created_at: string;
+          }) => {
+            // 将数据库中的sending状态消息修正为sent状态
+            const status = msg.status === 'sending' ? 'sent' : msg.status;
+            
+            return {
+              id: msg.message_id,
+              role: msg.role,
+              content: msg.content,
+              status: status,
+              timestamp: new Date(msg.created_at).getTime()
+            };
+          });
+          return; // 已成功加载，直接返回
+        }
+      } catch (err) {
+        console.error(`使用会话ID [${currentSessionId.value}] 加载聊天历史失败:`, err);
+        // 会话ID无效，继续尝试获取所有聊天记录
+      }
+    }
+    
+    // 先尝试获取对应版本的所有聊天记录（不传sessionId）
+    const history = await chatApi.getChatHistory(projectId, versionNumber);
+    
+    if (history && history.length > 0) {
+      // 如果有聊天记录，获取第一条记录的sessionId
+      if (history[0].session_id) {
+        currentSessionId.value = history[0].session_id;
+      }
+      
+      // 转换为前端使用的格式
+      chatMessages.value = history.map((msg: { 
+        message_id: string; 
+        role: 'user' | 'assistant' | 'system'; 
+        content: string; 
+        status: 'sending' | 'sent' | 'error';
+        created_at: string;
+      }) => {
+        // 将数据库中的sending状态消息修正为sent状态
+        const status = msg.status === 'sending' ? 'sent' : msg.status;
+        
+        return {
+          id: msg.message_id,
+          role: msg.role,
+          content: msg.content,
+          status: status,
+          timestamp: new Date(msg.created_at).getTime()
+        };
+      });
+      
+      // 有聊天记录时，不显示欢迎消息
+    } else {
+      // 没有聊天记录时，创建新会话
+      try {
+        // 创建新会话ID
+        const newSessionId = await chatApi.createChatSession(projectId, versionNumber);
+        currentSessionId.value = newSessionId;
+        
+        // 获取新创建的会话（应该包含欢迎消息）
+        const newSessionHistory = await chatApi.getChatHistory(projectId, versionNumber, newSessionId);
+        
+        if (newSessionHistory && newSessionHistory.length > 0) {
+          // 转换为前端使用的格式
+          chatMessages.value = newSessionHistory.map((msg: { 
+            message_id: string; 
+            role: 'user' | 'assistant' | 'system'; 
+            content: string; 
+            status: 'sending' | 'sent' | 'error';
+            created_at: string;
+          }) => {
+            // 将数据库中的sending状态消息修正为sent状态
+            const status = msg.status === 'sending' ? 'sent' : msg.status;
+            
+            return {
+              id: msg.message_id,
+              role: msg.role,
+              content: msg.content,
+              status: status,
+              timestamp: new Date(msg.created_at).getTime()
+            };
+          });
+          return;
+        }
+        
+        // 如果获取新会话历史失败，回退到本地添加欢迎消息
+        chatMessages.value = [];
+        addWelcomeMessage();
+      } catch (createError) {
+        console.error('创建新聊天会话失败，回退到本地欢迎消息:', createError);
+        resetChatSession();
+        addWelcomeMessage();
+      }
+    }
+  } catch (error) {
+    console.error('加载聊天历史失败:', error);
+    
+    // 加载失败时，重置会话并添加欢迎消息
+    resetChatSession();
+    addWelcomeMessage();
+  }
+}
+
+// 重置对话
+const resetChat = async () => {
+  try {
+    await ElMessageBox.confirm('确定要清空所有对话记录吗？删除后将无法恢复。', '确认重置', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
+    
+    if (!currentSessionId.value) {
+      ElMessage.warning('没有可删除的聊天记录');
+      return;
+    }
+    
+    try {
+      // 调用后端API删除会话记录
+      await chatApi.deleteSession(currentSessionId.value);
+      
+      // 创建新会话
+      const projectId = typeof props.currentProject.id === 'string' 
+        ? parseInt(props.currentProject.id) 
+        : props.currentProject.id;
+      const versionNumber = currentVersion.value?.versionNumber || 1;
+      
+      // 创建新会话并获取新的会话ID
+      currentSessionId.value = await chatApi.createChatSession(projectId, versionNumber);
+      
+      // 重新加载聊天历史（应该只包含欢迎消息）
+      await loadChatHistory();
+      
+      // 显示成功消息
+      ElMessage.success('聊天记录已清空');
+    } catch (error) {
+      console.error('删除聊天记录失败:', error);
+      ElMessage.error('删除聊天记录失败，请重试');
+    }
+  } catch {
+    // 用户取消重置
+  }
+}
+
+// 监听版本变化，重新加载聊天历史
+watch(() => currentVersionIndex.value, async () => {
+  // 只有在聊天面板打开的情况下才重新加载
+  if (showAIChatPanel.value) {
+    // 清空当前会话ID，重新加载聊天历史
+    currentSessionId.value = '';
+    await loadChatHistory();
+  }
+});
+
+// 打开AI对话面板
+const openAIChatPanel = async () => {
+  showAIChatPanel.value = true;
+  isRobotVisible.value = false;
+  
+  try {
+    // 如果已有会话ID，则使用已有会话ID加载历史
+    // 否则，重新初始化聊天历史
+    await loadChatHistory();
+    
+    // 聚焦输入框
+    setTimeout(() => {
+      const inputEl = document.querySelector('.chat-input textarea');
+      if (inputEl instanceof HTMLElement) {
+        inputEl.focus();
+      }
+    }, 100);
+  } catch (error) {
+    console.error('初始化聊天失败:', error);
+    ElMessage.error('初始化聊天失败，请重试');
+  }
+}
+
+// 关闭AI对话面板
+const closeAIChatPanel = () => {
+  // 如果有流式请求在进行中，先取消
+  cancelStreamRequest()
+  
+  showAIChatPanel.value = false
+  isRobotVisible.value = true
+}
+
+// 发送消息
+const sendMessage = async () => {
+  const trimmedMessage = chatInputValue.value.trim()
+  if (!trimmedMessage || isSendingMessage.value) return
+  
+  // 清空输入框
+  chatInputValue.value = ''
+  
+  try {
+    isSendingMessage.value = true
+    
+    // 处理文章内容，确保它是字符串类型
+    let essayContent = ''
+    if (currentVersion.value?.content) {
+      if (Array.isArray(currentVersion.value.content)) {
+        essayContent = currentVersion.value.content.join('\n\n')
+      } else if (typeof currentVersion.value.content === 'string') {
+        essayContent = currentVersion.value.content
+      }
+    }
+    
+    // 创建一个用户消息对象
+    const userMessage = {
+      id: generateId(),
+      role: 'user' as const,
+      content: trimmedMessage,
+      timestamp: Date.now(),
+      status: 'sent' as const
+    }
+    
+    // 立即添加用户消息到列表
+    chatMessages.value.push(userMessage)
+    
+    // 添加一个空的AI回复占位消息
+    const assistantMessage = {
+      id: '', // 暂时为空，稍后由服务器返回的messageId替换
+      role: 'assistant' as const,
+      content: '',
+      timestamp: Date.now(),
+      status: 'sending' as const
+    }
+    
+    // 添加AI消息到列表
+    chatMessages.value.push(assistantMessage)
+    
+    // 滚动到底部
+    scrollToBottom()
+    
+    // 开启AI输入状态
+    aiTyping.value = true
+    
+    // 使用流式API发送消息
+    const cancelStreamFn = chatApi.sendMessageStream({
+      projectId: Number(props.currentProject.id),
+      versionNumber: currentVersion.value?.versionNumber || 1,
+      sessionId: currentSessionId.value,
+      message: trimmedMessage,
+      taskType: props.taskType?.toLowerCase() || 'task1',
+      title: typeof props.currentProject?.title === 'string' ? props.currentProject.title : '',
+      content: essayContent
+    }, {
+      // 收到初始化消息
+      onStart: (messageId, requestId) => {
+        // 保存请求ID
+        currentRequestId.value = requestId
+        
+        // 更新占位消息ID
+        const assistantMsgIndex = chatMessages.value.findIndex(
+          msg => msg.role === 'assistant' && msg.status === 'sending' && msg.content === ''
+        )
+        if (assistantMsgIndex >= 0) {
+          chatMessages.value[assistantMsgIndex].id = messageId
+        }
+      },
+      // 收到内容片段
+      onChunk: (chunk) => {
+        // 更新对应ID的消息内容
+        const assistantMsgIndex = chatMessages.value.findIndex(
+          msg => msg.id === chunk.messageId
+        )
+        if (assistantMsgIndex >= 0) {
+          // 追加内容
+          chatMessages.value[assistantMsgIndex].content += chunk.content
+          // 滚动到底部
+          scrollToBottom()
+        }
+      },
+      // 流式响应完成
+      onComplete: () => {
+        aiTyping.value = false
+        isSendingMessage.value = false
+        currentStreamCancelFn.value = null
+        
+        // 更新所有发送中状态的AI消息为已发送
+        chatMessages.value.forEach(msg => {
+          if (msg.role === 'assistant' && msg.status === 'sending') {
+            msg.status = 'sent'
+          }
+        })
+      },
+      // 发生错误
+      onError: (error) => {
+        console.error('流式聊天错误:', error)
+        ElMessage.error('发送消息失败，请重试')
+        
+        aiTyping.value = false
+        isSendingMessage.value = false
+        currentStreamCancelFn.value = null
+        
+        // 更新所有发送中状态的AI消息为错误状态
+        chatMessages.value.forEach(msg => {
+          if (msg.role === 'assistant' && msg.status === 'sending') {
+            msg.status = 'error'
+            msg.content = '抱歉，处理您的请求时出现了问题，请稍后重试。'
+          }
+        })
+      }
+    })
+    
+    // 保存取消函数，以便在需要时取消流
+    currentStreamCancelFn.value = cancelStreamFn
+  } catch (error) {
+    console.error('发送消息失败:', error)
+    ElMessage.error('发送消息失败，请重试')
+    
+    aiTyping.value = false
+    isSendingMessage.value = false
+  }
+}
+
+// 取消发送中的流请求
+const cancelStreamRequest = () => {
+  if (currentStreamCancelFn.value) {
+    currentStreamCancelFn.value()
+    currentStreamCancelFn.value = null
+    
+    // 更新所有发送中状态的AI消息为取消状态
+    chatMessages.value.forEach(msg => {
+      if (msg.role === 'assistant' && msg.status === 'sending') {
+        msg.status = 'error'
+        msg.content = '消息发送已取消'
+      }
+    })
+    
+    aiTyping.value = false
+    isSendingMessage.value = false
+  }
+}
+
+// 滚动到底部
+const scrollToBottom = () => {
+  setTimeout(() => {
+    const chatBody = document.querySelector('.chat-messages')
+    if (chatBody) {
+      chatBody.scrollTop = chatBody.scrollHeight
+    }
+  }, 50)
+}
+
+// 删除消息及其后续响应
+const deleteMessage = async (messageId: string) => {
+  try {
+    await ElMessageBox.confirm('删除此消息将同时删除AI的回复，确定要删除吗？', '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    try {
+      // 调用后端API删除消息
+      await chatApi.deleteMessage(messageId);
+      
+      // 找到消息索引
+      const msgIndex = chatMessages.value.findIndex(msg => msg.id === messageId)
+      if (msgIndex >= 0) {
+        // 从UI中删除该消息
+        chatMessages.value.splice(msgIndex, 1)
+        
+        // 如果后面紧跟着助手消息，也一并删除UI中的显示
+        if (msgIndex < chatMessages.value.length && chatMessages.value[msgIndex]?.role === 'assistant') {
+          // 获取助手消息ID
+          const assistantMessageId = chatMessages.value[msgIndex].id;
+          // 从后端删除助手消息
+          await chatApi.deleteMessage(assistantMessageId).catch(err => console.error('删除助手消息失败:', err));
+          // 从UI中删除
+          chatMessages.value.splice(msgIndex, 1)
+        }
+      }
+      
+      ElMessage.success('消息已删除');
+    } catch (error) {
+      console.error('删除消息失败:', error);
+      ElMessage.error('删除消息失败，请重试');
+    }
+  } catch {
+    // 用户取消删除
+  }
+}
+
+// 输入框按键事件处理
+const handleKeyDown = (e: KeyboardEvent) => {
+  // 按Enter发送消息(不按Shift)
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    sendMessage()
+  }
+}
+
+// 监听对话面板开关状态
+watch(() => showAIChatPanel.value, (newVal) => {
+  if (newVal) {
+    // 面板打开时滚动到底部
+    scrollToBottom()
+  }
+})
+
+// 监听聊天消息变化，自动滚动到底部
+watch(() => chatMessages.value.length, () => {
+  scrollToBottom()
+})
+
+// 重置聊天会话
+const resetChatSession = async () => {
+  try {
+    // 生成新的会话ID
+    if (props.currentProject.id && currentVersion.value) {
+      const projectId = typeof props.currentProject.id === 'string' 
+        ? parseInt(props.currentProject.id) 
+        : props.currentProject.id;
+      const versionNumber = currentVersion.value.versionNumber;
+      
+      // 创建新会话ID
+      currentSessionId.value = await chatApi.createChatSession(projectId, versionNumber);
+    } else {
+      // 如果项目ID或版本不存在，生成随机会话ID
+      currentSessionId.value = generateId();
+    }
+    
+    // 清空聊天记录
+    chatMessages.value = [];
+  } catch (error) {
+    console.error('重置聊天会话失败:', error);
+    // 生成随机会话ID作为备用
+    currentSessionId.value = generateId();
+    chatMessages.value = [];
+  }
+}
+
+// 添加欢迎消息
+const addWelcomeMessage = () => {
+  chatMessages.value.push({
+    id: generateId(),
+    role: 'assistant',
+    content: '你好！我是你的写作助手，你想了解些什么？可以向我提问关于如何提高作文分数的问题，我会尽力帮助你！',
+    timestamp: Date.now(),
+    status: 'sent'
+  });
 }
 </script>
 
@@ -1205,6 +1772,11 @@ const renderMarkdown = (content: string) => {
               </div>
             </el-collapse-transition>
           </div>
+          
+          <!-- 添加Robot图标 -->
+          <div v-if="isRobotVisible" class="robot-icon" @click="openAIChatPanel">
+            <img src="../../assets/robot.svg" alt="AI助手" />
+          </div>
         </div>
 
         <!-- 操作按钮 -->
@@ -1218,6 +1790,89 @@ const renderMarkdown = (content: string) => {
               <el-icon><Delete /></el-icon>
               <span class="button-text">删除项目</span>
             </el-button>
+          </div>
+        </div>
+        
+        <!-- AI对话面板 -->
+        <div v-if="showAIChatPanel" class="ai-chat-panel">
+          <div class="ai-chat-header">
+            <h3>AI随心问</h3>
+            <div class="ai-chat-actions">
+              <el-button type="primary" text circle @click="resetChat" title="重置对话">
+                <el-icon><RefreshRight /></el-icon>
+              </el-button>
+              <el-button circle text @click="closeAIChatPanel" class="close-btn">
+                <el-icon><Close /></el-icon>
+              </el-button>
+            </div>
+          </div>
+          
+          <div class="chat-messages">
+            <!-- 消息列表 -->
+            <div 
+              v-for="message in chatMessages" 
+              :key="message.id"
+              :class="[
+                'chat-message', 
+                message.role === 'user' ? 'user-message' : 'assistant-message',
+                message.status === 'sending' ? 'sending' : ''
+              ]"
+            >
+              <!-- 消息内容 -->
+              <div class="message-content">
+                <template v-if="message.role === 'user'">
+                  <p>{{ message.content }}</p>
+                </template>
+                <template v-else>
+                  <div v-html="renderMarkdown(message.content)" class="markdown-content"></div>
+                </template>
+                <div v-if="message.status === 'sending'" class="message-status">
+                  <span>发送中...</span>
+                </div>
+              </div>
+              
+              <!-- 用户消息操作按钮 - 放在消息下方 -->
+              <div v-if="message.role === 'user'" class="message-actions">
+                <div class="action-buttons-row">
+                  <span class="action-button delete-button" @click="deleteMessage(message.id)" title="删除">
+                    <el-icon><Delete /></el-icon>
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- AI正在输入提示 -->
+            <div v-if="aiTyping" class="ai-typing">
+              <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="chat-input-container">
+            <!-- 输入框 -->
+            <div class="chat-input">
+              <el-input
+                v-model="chatInputValue"
+                type="textarea"
+                :rows="3"
+                resize="none"
+                placeholder="输入你的问题..."
+                @keydown="handleKeyDown"
+              />
+              
+              <el-button 
+                type="primary" 
+                circle 
+                class="send-button" 
+                @click="sendMessage" 
+                :disabled="!chatInputValue.trim() || isSendingMessage"
+              >
+                <el-icon><ChatDotRound /></el-icon>
+              </el-button>
+            </div>
           </div>
         </div>
         

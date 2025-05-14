@@ -1,6 +1,6 @@
 # EssayMate
 
-[![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![Vue](https://img.shields.io/badge/Vue-3.x-green.svg)](https://vuejs.org/) [![Node](https://img.shields.io/badge/Node-18.20.7-blue.svg)](https://nodejs.org/)
+[![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![Vue](https://img.shields.io/badge/Vue-3.x-green.svg)](https://vuejs.org/) [![Node](https://img.shields.io/badge/Node-18.20.7-blue.svg)](https://nodejs.org/) [![Version](https://img.shields.io/badge/Version-v0.1.1-orange.svg)](https://github.com/July-Tea/EssayMate)
 
 EssayMate 是一个基于 AI 的雅思/托福/GRE作文批改助手，支持自动评分、详细反馈和智能建议。
 EssayMate is an AI-powered IELTS / TOEFL / GRE essay correction assistant that provides automated scoring, detailed feedback, and intelligent suggestions.
@@ -69,8 +69,10 @@ After starting, visit http://localhost:5173 to use the application
 - [x] 项目列表批量管理 / Batch project list management
 - [x] 优化等待体验 / Optimize the waiting experience
 - [x] 范文功能 / Sample essays feature
+- [x] AI随心问 - 于反馈界面加入用户询问AI的前端入口 /  AI Chat Feature - Add a frontend entry for users to ask AI within the feedback interface.
 - [ ] 接入更多AI模型 / Integrate more AI models
-- [ ] AI随心问 - 于反馈界面加入用户询问AI的前端入口，并提供范例 /  AI Ask Freely - Add a frontend entry for users to ask AI within the feedback interface, and provide examples.
+- [ ] 加入OCR文字识别功能 / Integrate OCR for image text recognition
+- [ ] 完善AI随心问 - 加入上下文 / Improve AI Chat Feature – Add Context Support
 - [ ] 在设置界面加入自定义修改Prompt功能 / Add a feature in the settings interface to allow custom modification of prompts.
 - [ ] 连词助手 / Conjunction assistant
 - [ ] 深色模式支持 / Dark mode support

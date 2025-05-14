@@ -272,7 +272,93 @@
 - **方法**: GET
 - **响应**: 指定日志的详细信息
 
-## 7. 健康检查
+## 7. 聊天相关 API (`/chat`)
+
+### 7.1 获取聊天历史
+- **路径**: `/api/chat/:projectId/:versionNumber`
+- **方法**: GET
+- **查询参数**: 
+  - `sessionId` (可选): 会话ID
+- **响应**: 
+  ```json
+  {
+    "success": true,
+    "data": [
+      // 聊天消息数组
+    ]
+  }
+  ```
+
+### 7.2 创建新会话
+- **路径**: `/api/chat/session/:projectId/:versionNumber`
+- **方法**: POST
+- **响应**: 
+  ```json
+  {
+    "success": true,
+    "data": {
+      "sessionId": "string"
+    }
+  }
+  ```
+
+### 7.3 发送消息
+- **路径**: `/api/chat/send`
+- **方法**: POST
+- **请求体**:
+  ```json
+  {
+    "projectId": number,
+    "versionNumber": number,
+    "sessionId": "string",
+    "message": "string",
+    "parentId": "string", // 可选
+    "examType": "string", // 可选，默认 'ielts'
+    "taskType": "string", // 可选，默认 'task1'
+    "title": "string",    // 可选
+    "content": "string"   // 可选
+  }
+  ```
+- **响应**: 
+  ```json
+  {
+    "success": true,
+    "data": {
+      // 消息响应数据
+    }
+  }
+  ```
+
+### 7.4 删除会话
+- **路径**: `/api/chat/session/:sessionId`
+- **方法**: DELETE
+- **响应**: 
+  ```json
+  {
+    "success": true,
+    "message": "会话已删除"
+  }
+  ```
+
+## 8. 范文相关 API (`/example-essays`)
+
+### 8.1 创建新范文
+- **路径**: `/api/example-essays`
+- **方法**: POST
+- **请求体**: ExampleEssayCreate 对象
+- **响应**: 创建的范文信息
+
+### 8.2 获取项目的所有范文
+- **路径**: `/api/example-essays/project/:projectId`
+- **方法**: GET
+- **响应**: 指定项目的所有范文列表
+
+### 8.3 获取特定版本的范文
+- **路径**: `/api/example-essays/project/:projectId/version/:versionNumber`
+- **方法**: GET
+- **响应**: 指定项目特定版本的范文信息
+
+## 9. 健康检查
 - **路径**: `/health`
 - **方法**: GET
 - **响应**: 

@@ -9,7 +9,8 @@ export enum PromptType {
   FEEDBACK = 'feedback',    // 评分和反馈
   ANNOTATION = 'annotation', // 段落批注
   EXAMPLE = 'example',       // 范文生成
-  EXAMPLE_ESSAY = 'example_essay'  // 范文生成（新版）
+  EXAMPLE_ESSAY = 'example_essay',  // 范文生成（新版）
+  CHAT = 'chat'             // AI对话
 }
 
 /**
@@ -94,6 +95,8 @@ export class PromptManager {
               templateName = 'IELTSTask1Example';
             } else if (promptType === PromptType.EXAMPLE_ESSAY) {
               templateName = 'IELTSTask1Example';
+            } else if (promptType === PromptType.CHAT) {
+              templateName = 'IELTSTask1Chat';
             }
           } else if (taskType.toLowerCase() === 'task2') {
             if (promptType === PromptType.FEEDBACK) {
@@ -104,6 +107,8 @@ export class PromptManager {
               templateName = 'IELTSTask2Example';
             } else if (promptType === PromptType.EXAMPLE_ESSAY) {
               templateName = 'IELTSTask2Example';
+            } else if (promptType === PromptType.CHAT) {
+              templateName = 'IELTSTask2Chat';
             }
           }
         } else if (examType.toLowerCase() === 'toefl') {
@@ -130,8 +135,8 @@ export class PromptManager {
             model.toLowerCase(),
             examType.toLowerCase(),
             taskType.toLowerCase(),
-            // 修正文件名映射，使用正确的文件名
-            promptType === PromptType.EXAMPLE_ESSAY ? 'example.js' : `${promptType}.js`
+            // 修正文件名映射，使用正确的文件扩展名(.ts而非.js)
+            promptType === PromptType.EXAMPLE_ESSAY ? 'example.ts' : `${promptType}.ts`
           );
           
           console.info(`[PromptManager] 尝试从路径加载模板: ${promptPath}`);
@@ -157,8 +162,8 @@ export class PromptManager {
           model.toLowerCase(),
           examType.toLowerCase(),
           taskType.toLowerCase(),
-          // 修正文件名映射，使用正确的文件名
-          promptType === PromptType.EXAMPLE_ESSAY ? 'example.js' : `${promptType}.js`
+          // 修正文件名映射，使用正确的文件扩展名(.ts而非.js)
+          promptType === PromptType.EXAMPLE_ESSAY ? 'example.ts' : `${promptType}.ts`
         );
         
         console.info(`[PromptManager] 尝试从路径加载模板: ${promptPath}`);
@@ -219,6 +224,14 @@ export class PromptManager {
         systemPrompt: `你是一位资深${examType}考官和写作教师，请根据提供的题目创建一篇高质量的${examType}范文。`,
         userPrompt: `题目: {{prompt}}\n\n考试类型: {{exam_type}}\n\n考试类别: {{exam_category}}\n\n目标分数: {{targetScore}}\n\n请创建一篇高质量的范文示例，展示如何获得目标分数水平的写作。`,
         maxTokens: 2500,
+        outputFormat: 'text'
+      };
+    } else if (promptType === PromptType.CHAT) {
+      // AI对话
+      return {
+        systemPrompt: `你是一位资深${examType}写作助手，可以解答用户关于写作的各种问题，提供针对性的建议和指导。`,
+        userPrompt: `{{message}}`,
+        maxTokens: 1000,
         outputFormat: 'text'
       };
     } else {
