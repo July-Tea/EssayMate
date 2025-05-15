@@ -194,7 +194,7 @@
   flex-direction: column;
   background: linear-gradient(170deg, #ffffff, #f8f9fa); /* 统一渐变背景 */
   border-left: 1px solid rgba(0, 0, 0, 0.06);
-  position: relative;
+  position: relative; /* 确保是定位上下文 */
   overflow: hidden;
   box-sizing: border-box; /* 确保padding不增加元素总宽度 */
   
@@ -2383,10 +2383,10 @@
 /* 机器人图标样式 */
 .robot-icon {
   position: absolute;
-  right: 10px;
-  bottom: 10px;
-  width: 32px;
-  height: 32px;
+  right: 3%; /* 使用百分比替代固定像素 */
+  bottom: calc(64px + 5%); /* 使用calc计算位置：操作按钮高度+边距 */
+  width: clamp(36px, 4%, 46px); /* 响应式尺寸：最小36px，最大46px */
+  aspect-ratio: 1 / 1; /* 确保图标容器保持正方形 */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2394,19 +2394,37 @@
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.3s;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  z-index: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 10; /* 确保显示在最前 */
+  opacity: 0.6;
 }
 
 .robot-icon:hover {
   transform: scale(1.1);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
   background-color: #e6f1ff;
+  opacity: 1;
 }
 
 .robot-icon img {
-  width: 20px;
-  height: 20px;
+  width: 50%; /* 图标尺寸设为容器的50% */
+  height: auto; /* 让高度自动适应，保持图片比例 */
+  object-fit: contain;
+}
+
+/* 添加媒体查询以在不同屏幕尺寸下优化位置 */
+@media (max-width: 768px) {
+  .robot-icon {
+    right: 8%;
+    bottom: calc(50px + 5%);
+  }
+}
+
+@media (max-width: 480px) {
+  .robot-icon {
+    right: 10%;
+    bottom: calc(40px + 4%);
+  }
 }
 
 /* AI对话面板样式 */

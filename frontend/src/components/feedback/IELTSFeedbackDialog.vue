@@ -1772,11 +1772,11 @@ const addWelcomeMessage = () => {
               </div>
             </el-collapse-transition>
           </div>
-          
-          <!-- 添加Robot图标 -->
-          <div v-if="isRobotVisible" class="robot-icon" @click="openAIChatPanel">
-            <img src="../../assets/robot.svg" alt="AI助手" />
-          </div>
+        </div>
+        
+        <!-- 移动Robot图标到这里 -->
+        <div v-if="isRobotVisible" class="robot-icon" @click="openAIChatPanel">
+          <img src="../../assets/robot.svg" alt="AI助手" />
         </div>
 
         <!-- 操作按钮 -->
