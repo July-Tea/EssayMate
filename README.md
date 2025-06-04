@@ -5,6 +5,8 @@
 EssayMate 是一个基于 AI 的雅思/托福/GRE作文批改助手，支持自动评分、详细反馈和智能建议。
 EssayMate is an AI-powered IELTS / TOEFL / GRE essay correction assistant that provides automated scoring, detailed feedback, and intelligent suggestions.
 
+![image](https://github.com/July-Tea/For-Images/blob/main/Image_1.png)
+
 ## ✨ 特性 | Features
 
 - 🎯 支持雅思、托福、GRE等作文批改 / Supports essay correction for IELTS, TOEFL, GRE, and more
