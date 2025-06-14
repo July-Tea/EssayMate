@@ -68,10 +68,7 @@ After starting, visit http://localhost:5173 to use the application
 - [ ] OpenAI
 
 ## 📋 待办事项 | Todo List
-- [x] 项目列表批量管理 / Batch project list management
-- [x] 优化等待体验 / Optimize the waiting experience
-- [x] 范文功能 / Sample essays feature
-- [x] AI随心问 - 于反馈界面加入用户询问AI的前端入口 /  AI Chat Feature - Add a frontend entry for users to ask AI within the feedback interface.
+- [ ] 批改等待时间优化（并发批改） / Optimization of Grading Waiting Time (Concurrent Grading)
 - [ ] 接入更多AI模型 / Integrate more AI models
 - [ ] 加入OCR文字识别功能 / Integrate OCR for image text recognition
 - [ ] 完善AI随心问 - 加入上下文 / Improve AI Chat Feature – Add Context Support
@@ -86,6 +83,10 @@ After starting, visit http://localhost:5173 to use the application
 - [ ] 优化批改流程的用户界面和交互体验，解决响应延迟问题 / Optimized user interface and interaction experience of the correction process, addressing response latency issues
 - [ ] 反馈语言设置 / Feedback language settings
 - [x] 统一雅思写作Task 1和Task 2的反馈界面，提升用户体验 / Unified feedback interface for IELTS Writing Task 1 and Task 2, improving user experience
+- [x] 项目列表批量管理 / Batch project list management
+- [x] 优化等待体验 / Optimize the waiting experience
+- [x] 范文功能 / Sample essays feature
+- [x] AI随心问 - 于反馈界面加入用户询问AI的前端入口 /  AI Chat Feature - Add a frontend entry for users to ask AI within the feedback interface.
 
 ## ℹ️ 实用信息 | Useful Information
 - 数据库管理：访问 http://localhost:5173/database 查看后端数据库信息
