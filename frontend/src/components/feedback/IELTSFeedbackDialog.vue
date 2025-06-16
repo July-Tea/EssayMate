@@ -1664,7 +1664,7 @@ const addWelcomeMessage = () => {
           <!-- 版本控制与范文按钮 -->
           <div class="bottom-controls">
             <!-- 将范文按钮和版本控制放在一个组中 -->
-            <div class="controls-group">
+            <div class="controls-group" :class="{ 'example-active': showExampleEssay }">
               <!-- 范文按钮 -->
               <div class="example-essay-control">
                 <el-button

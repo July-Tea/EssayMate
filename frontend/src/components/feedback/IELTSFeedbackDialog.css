@@ -1614,7 +1614,7 @@
   right: 10px;
   left: 10px;
   pointer-events: none; /* 避免挡住内容区域的点击 */
-  z-index: 3; /* 确保按钮在分隔线上方 */
+  z-index: 15; /* 确保按钮在范文内容上方 */
 }
 
 .bottom-controls > * {
@@ -1634,7 +1634,14 @@
   transition: opacity 0.3s ease;
 }
 
-.controls-group:hover {
+/* 当范文按钮激活时，保持controls-group半透明以不影响可读性 */
+.controls-group.example-active {
+  opacity: 0.3;
+}
+
+/* 确保hover时始终能激活，无论是否在范文模式 */
+.controls-group:hover,
+.controls-group.example-active:hover {
   transition: opacity 0.3s ease;
   opacity: 1;
 }
