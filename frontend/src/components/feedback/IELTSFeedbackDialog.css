@@ -1719,46 +1719,85 @@
   position: relative;
 }
 
+/* 非分屏模式下的原文样式 */
+.essay-text:not(.essay-text-split) .paragraph {
+  transition: all 0.3s ease;
+  transform: translateX(0);
+  opacity: 1;
+}
+
 .essay-text-split-container {
   display: flex;
   height: 100%;
   width: 100%;
   --split-ratio: 50%;
   position: relative;
-  will-change: transform; /* 优化动画性能 */
+  will-change: transform;
+  overflow: hidden;
 }
 
 .essay-original {
-  width: var(--split-ratio);
+  width: 100%; /* 初始状态占满全宽 */
   padding-right: 20px;
   overflow-y: auto;
-  transition: width 0.5s cubic-bezier(0.25, 0.1, 0.25, 1); /* 使用贝塞尔曲线优化动画 */
   padding-top: 10px;
-  will-change: width; /* 优化宽度动画性能 */
+  will-change: width, transform;
+  transition: width 0.7s cubic-bezier(0.23, 1, 0.32, 1), transform 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+  transform: translateX(0);
+  position: relative;
+  overflow-x: hidden; /* 防止内容在收缩时溢出 */
 }
 
 .essay-example {
   width: calc(100% - var(--split-ratio));
   padding-left: 20px;
   overflow-y: auto;
+  padding-top: 10px;
+  will-change: transform, opacity, width;
+  transform: translateX(100%);
+  opacity: 0;
+  transition: all 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* 范文入场动画状态 */
+.essay-text-split-container.entering .essay-example {
   transform: translateX(0);
   opacity: 1;
-  transition: 
-    width 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
-    transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
-    opacity 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
-  padding-top: 10px;
-  will-change: transform, opacity, width; /* 优化动画性能 */
 }
 
-/* 确保在显示/隐藏时有平滑过渡 */
-.essay-text:not(.essay-text-split) + .essay-text.essay-text-split .essay-example {
-  animation: slideInFromRight 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+.essay-text-split-container.entering .essay-original {
+  width: var(--split-ratio); /* 收缩到分割比例 */
+  transform: translateX(0);
 }
 
-.essay-text.essay-text-split + .essay-text:not(.essay-text-split) {
-  animation: expandOriginal 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+/* 范文退场动画状态 - 关键修复：确保平滑过渡 */
+.essay-text-split-container.exiting .essay-example {
+  transform: translateX(100%);
+  opacity: 0;
 }
+
+/* 原文在退场时的平滑展开 */
+.essay-text-split-container.exiting .essay-original {
+  width: 100%; /* 平滑展开到全宽 */
+  transform: translateX(0);
+}
+
+/* 确保稳定状态下的宽度设置 */
+.essay-text-split-container:not(.entering):not(.exiting) .essay-original {
+  width: var(--split-ratio);
+}
+
+/* 当分屏容器不存在时，原文应该占满全宽 */
+.essay-text:not(.essay-text-split) .essay-original,
+.essay-original:not(.essay-text-split-container .essay-original) {
+  width: 100% !important;
+}
+
+
 
 /* 简化分隔线样式 */
 .essay-splitter {
@@ -1771,9 +1810,17 @@
   cursor: col-resize;
   z-index: 2;
   background-color: rgba(0, 0, 0, 0.12);
-  transition: 
-    background-color 0.3s ease, 
-    left 0.5s cubic-bezier(0.25, 0.1, 0.25, 1); /* 使用贝塞尔曲线平滑过渡 */
+  opacity: 1;
+  transition:
+    background-color 0.3s ease,
+    left 0.7s cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 0.7s cubic-bezier(0.23, 1, 0.32, 1); /* 与主动画同步 */
+}
+
+/* 分割条在退场时淡出 */
+.essay-text-split-container.exiting .essay-splitter {
+  opacity: 0;
+  left: 100%; /* 跟随原文展开 */
 }
 
 /* 增加拖动区域宽度，提高灵敏度 */
@@ -1865,26 +1912,97 @@
   color: #333;
 }
 
-/* 动画效果 */
-@keyframes slideInFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(50px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+/* 高级滑动动画效果 - 使用CSS transition替代keyframes获得更流畅的效果 */
+.essay-text-split-container {
+  /* 添加微妙的背景渐变增强视觉层次 */
+  background: linear-gradient(
+    90deg,
+    rgba(248, 249, 250, 0.3) 0%,
+    rgba(255, 255, 255, 0.1) var(--split-ratio),
+    rgba(248, 249, 250, 0.2) 100%
+  );
 }
 
-@keyframes expandOriginal {
-  from {
-    width: var(--split-ratio);
-  }
-  to {
-    width: 100%;
-  }
+/* 内容标题的入场动画 */
+.content-title {
+  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
 }
+
+.content-title.fade-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 原文标题在分屏模式下的动画 */
+.essay-original .original-title {
+  transition: all 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+  transform: translateX(0) scale(1);
+  opacity: 1;
+}
+
+.essay-text-split-container.entering .essay-original .original-title {
+  transform: translateX(-2px) scale(0.98);
+  opacity: 0.9;
+}
+
+.essay-text-split-container.exiting .essay-original .original-title {
+  transform: translateX(0) scale(1);
+  opacity: 1;
+}
+
+/* 为原文内容添加更自然的收缩动画 */
+.essay-original .paragraph {
+  transition: all 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+  transform: translateX(0) scale(1);
+  opacity: 1;
+  transform-origin: left center;
+}
+
+/* 入场时：原文段落轻微缩放和位移，营造自然的收缩感 */
+.essay-text-split-container.entering .essay-original .paragraph {
+  transform: translateX(-3px) scale(0.98);
+  opacity: 0.92;
+}
+
+/* 退场时：原文段落恢复到原始状态 */
+.essay-text-split-container.exiting .essay-original .paragraph {
+  transform: translateX(0) scale(1);
+  opacity: 1;
+}
+
+/* 为原文段落添加渐进式动画延迟，避免突然跳出 */
+.essay-original .paragraph:nth-child(1) { transition-delay: 0s; }
+.essay-original .paragraph:nth-child(2) { transition-delay: 0.05s; }
+.essay-original .paragraph:nth-child(3) { transition-delay: 0.1s; }
+.essay-original .paragraph:nth-child(4) { transition-delay: 0.15s; }
+.essay-original .paragraph:nth-child(5) { transition-delay: 0.2s; }
+.essay-original .paragraph:nth-child(6) { transition-delay: 0.25s; }
+.essay-original .paragraph:nth-child(7) { transition-delay: 0.3s; }
+.essay-original .paragraph:nth-child(8) { transition-delay: 0.35s; }
+
+/* 为范文内容添加微妙的入场延迟 */
+.essay-example .example-paragraph {
+  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  transform: translateY(15px) translateX(10px);
+  opacity: 0;
+  filter: blur(1px);
+}
+
+.essay-text-split-container.entering .essay-example .example-paragraph {
+  transform: translateY(0) translateX(0);
+  opacity: 1;
+  filter: blur(0);
+}
+
+/* 为段落添加渐进式入场效果 */
+.essay-example .example-paragraph:nth-child(1) { transition-delay: 0.2s; }
+.essay-example .example-paragraph:nth-child(2) { transition-delay: 0.25s; }
+.essay-example .example-paragraph:nth-child(3) { transition-delay: 0.3s; }
+.essay-example .example-paragraph:nth-child(4) { transition-delay: 0.35s; }
+.essay-example .example-paragraph:nth-child(5) { transition-delay: 0.4s; }
+.essay-example .example-paragraph:nth-child(6) { transition-delay: 0.45s; }
+.essay-example .example-paragraph:nth-child(7) { transition-delay: 0.5s; }
+.essay-example .example-paragraph:nth-child(8) { transition-delay: 0.55s; }
 
 /* 响应式调整 */
 @media (max-width: 768px) {

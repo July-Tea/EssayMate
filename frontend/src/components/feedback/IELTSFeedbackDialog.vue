@@ -794,6 +794,8 @@ const exampleEssayImprovement = ref<string>('')
 const isLoadingExampleEssay = ref(false)
 const exampleEssaySplitRatio = ref(50) // 默认50%分割
 const isSplitterDragging = ref(false) // 分隔线拖动状态
+const isAnimating = ref(false) // 动画状态
+const animationState = ref('') // 'entering' | 'exiting' | ''
 
 // 处理拖动分割线调整比例
 const handleSplitDrag = (event: MouseEvent) => {
@@ -897,16 +899,26 @@ const fetchExampleEssay = async () => {
         
         // 确认有范文数据后再显示范文区域
         showExampleEssay.value = true
-        
-        // 使标题淡入
+
+        // 开始入场动画
         setTimeout(() => {
-          const titles = document.querySelectorAll('.content-title');
-          titles.forEach(title => {
-            if (title instanceof HTMLElement) {
-              title.style.opacity = '1';
-            }
-          });
-        }, 100);
+          animationState.value = 'entering'
+
+          // 使标题淡入
+          setTimeout(() => {
+            const titles = document.querySelectorAll('.content-title');
+            titles.forEach(title => {
+              if (title instanceof HTMLElement) {
+                title.style.opacity = '1';
+              }
+            });
+          }, 200);
+
+          // 动画完成后重置状态
+          setTimeout(() => {
+            isAnimating.value = false
+          }, 700);
+        }, 50);
       } else {
         throw new Error('未找到范文数据')
       }
@@ -930,31 +942,46 @@ const fetchExampleEssay = async () => {
   }
 }
 
-// 切换范文显示
+// 切换范文显示 - 高级动画版本
 const toggleExampleEssay = async () => {
+  if (isAnimating.value) return // 防止动画期间重复点击
+
   if (!showExampleEssay.value) {
-    // 如果AI面板已打开并且范文将被打开，关闭AI面板
-    // 这里不关闭AI面板，而是让范文覆盖在AI面板上方
-    
+    // === 范文入场动画 ===
+    isAnimating.value = true
+
     // 如果还没有加载范文，需要先获取
     if (!exampleEssayContent.value) {
       await fetchExampleEssay()
     } else {
-      // 已有数据，直接显示
+      // 已有数据，开始入场动画
       showExampleEssay.value = true
-      
-      // 使标题淡入
+
+      // 立即设置动画状态
       setTimeout(() => {
-        const titles = document.querySelectorAll('.content-title');
-        titles.forEach(title => {
-          if (title instanceof HTMLElement) {
-            title.style.opacity = '1';
-          }
-        });
-      }, 100);
+        animationState.value = 'entering'
+
+        // 使标题淡入
+        setTimeout(() => {
+          const titles = document.querySelectorAll('.content-title');
+          titles.forEach(title => {
+            if (title instanceof HTMLElement) {
+              title.style.opacity = '1';
+            }
+          });
+        }, 200);
+
+        // 动画完成后重置状态
+        setTimeout(() => {
+          isAnimating.value = false
+        }, 700);
+      }, 50);
     }
   } else {
-    // 隐藏范文
+    // === 范文退场动画 ===
+    isAnimating.value = true
+    animationState.value = 'exiting'
+
     // 先淡出标题
     const titles = document.querySelectorAll('.content-title');
     titles.forEach(title => {
@@ -962,11 +989,21 @@ const toggleExampleEssay = async () => {
         title.style.opacity = '0';
       }
     });
-    
-    // 等待标题淡出后再隐藏范文
+
+    // 等待动画完成后隐藏范文并重置状态
     setTimeout(() => {
       showExampleEssay.value = false
-    }, 300);
+      animationState.value = ''
+      isAnimating.value = false
+
+      // 确保原文恢复到正常状态
+      setTimeout(() => {
+        const originalElement = document.querySelector('.essay-original');
+        if (originalElement instanceof HTMLElement) {
+          originalElement.style.width = '';
+        }
+      }, 50);
+    }, 700);
   }
 }
 
@@ -987,6 +1024,8 @@ watch(() => currentVersionIndex.value, () => {
   exampleEssayContent.value = ''
   exampleEssayImprovement.value = ''
   showImprovementPanel.value = false // 版本切换时关闭面板
+  animationState.value = '' // 重置动画状态
+  isAnimating.value = false
 })
 
 // 添加改进建议面板状态
@@ -1580,7 +1619,7 @@ const addWelcomeMessage = () => {
         <div class="essay-content">
           <div class="essay-text" :class="{ 'essay-text-split': showExampleEssay }">
             <!-- 分屏展示内容 -->
-            <div v-if="showExampleEssay" class="essay-text-split-container" :style="{ '--split-ratio': `${exampleEssaySplitRatio}%` }">
+            <div v-if="showExampleEssay" class="essay-text-split-container" :class="animationState" :style="{ '--split-ratio': `${exampleEssaySplitRatio}%` }">
               <!-- 左侧：原文内容 -->
               <div class="essay-original">
                 <!-- 原文标题 -->
