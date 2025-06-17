@@ -583,3 +583,59 @@
   color: var(--el-color-primary-dark-2);
   text-decoration: underline;
 }
+
+/* 通用设置面板样式 */
+.general-settings-panel {
+  padding: 0;
+}
+
+.simple-setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.simple-setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.simple-setting-item :deep(.el-input-number) {
+  width: 120px;
+}
+
+.simple-setting-item :deep(.el-input-number .el-input__wrapper) {
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+}
+
+.simple-setting-item :deep(.el-input-number .el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+.simple-setting-item :deep(.el-input-number .el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px rgba(var(--el-color-primary-rgb), 0.2);
+}
+
+.simple-setting-item :deep(.el-input-number .el-input-number__increase),
+.simple-setting-item :deep(.el-input-number .el-input-number__decrease) {
+  border-radius: 3px;
+  border: none;
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.65);
+  transition: all 0.2s ease;
+}
+
+.simple-setting-item :deep(.el-input-number .el-input-number__increase:hover),
+.simple-setting-item :deep(.el-input-number .el-input-number__decrease:hover) {
+  background: var(--el-color-primary);
+  color: #fff;
+}

@@ -1,5 +1,6 @@
 import { DataSource } from "typeorm";
 import { Config } from "./models/Config";
+import { GeneralSettings } from "./models/GeneralSettings";
 import { Database } from 'sqlite3';
 
 export const AppDataSource = new DataSource({
@@ -7,7 +8,7 @@ export const AppDataSource = new DataSource({
   database: "database.sqlite",
   synchronize: true,
   logging: false,
-  entities: [Config],
+  entities: [Config, GeneralSettings],
   migrations: [],
   subscribers: []
 });

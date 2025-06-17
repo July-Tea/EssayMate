@@ -9,6 +9,16 @@ import { ApiError } from '../middleware/errorHandler';
 import { AppDataSource, getDatabaseConnection } from '../data-source';
 import { ConfigService } from '../services/config/ConfigService';
 import { ExampleEssayModel, ExampleEssayCreate } from '../models/ExampleEssay';
+import { ConcurrentTaskManager } from '../utils/ConcurrentTaskManager';
+import {
+  FeedbackTask,
+  AnnotationTask,
+  ExampleEssayTask,
+  FeedbackTaskResult,
+  AnnotationTaskResult,
+  ExampleEssayTaskResult
+} from '../utils/FeedbackTasks';
+import { GeneralSettingsService } from '../services/GeneralSettingsService';
 
 // 扩展IELTSFeedbackRequest接口以包含generateExampleEssay属性
 declare module '../services/ai/IELTSFeedbackService' {
@@ -28,6 +38,7 @@ export class AIFeedbackController {
   private configService: ConfigService;
   private feedbackFactory: EssayFeedbackFactory;
   private exampleEssayModel: ExampleEssayModel;
+  private generalSettingsService: GeneralSettingsService;
   private useEnhancedFeedback: boolean = true; // 默认使用增强版批改
   private processingFeedbacks: Map<number, FeedbackProgress> = new Map();
   
@@ -39,9 +50,22 @@ export class AIFeedbackController {
     this.configService = new ConfigService();
     this.feedbackFactory = new EssayFeedbackFactory();
     this.exampleEssayModel = new ExampleEssayModel(db);
-    
+    this.generalSettingsService = new GeneralSettingsService();
+
     // 从环境变量或配置中读取是否使用增强版批改
     this.useEnhancedFeedback = process.env.USE_ENHANCED_FEEDBACK !== 'false';
+  }
+
+  /**
+   * 获取最大并发任务数设置
+   */
+  private async getMaxConcurrentTasks(): Promise<number> {
+    try {
+      return await this.generalSettingsService.getMaxConcurrentTasks();
+    } catch (error) {
+      console.error('获取最大并发任务数失败，使用默认值1:', error);
+      return 1; // 默认值
+    }
   }
   
   /**
@@ -492,7 +516,7 @@ export class AIFeedbackController {
   }
 
   /**
-   * 处理AI批改
+   * 处理AI批改 - 并发版本
    * @param feedbackService AI批改服务实例
    * @param request 批改请求
    * @param feedbackId 反馈ID
@@ -504,202 +528,233 @@ export class AIFeedbackController {
     feedbackId: number,
     projectId: number
   ): Promise<void> {
+    const startTime = Date.now();
+
     try {
-      console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 开始处理批改请求 [反馈ID: ${feedbackId}]`);
-      
+      console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 开始处理批改请求 [反馈ID: ${feedbackId}]`);
+
       // 记录开始时间
       await this.feedbackModel.updateStartTime(feedbackId);
-      
+
       // 更新essay_version状态为处理中
       await this.essayVersionModel.updateStatusByVersionNumber(
-        projectId, 
-        parseInt(request.versionNumber as string), 
+        projectId,
+        parseInt(request.versionNumber as string),
         ProjectStatus.PROCESSING
       );
-      
-      // 步骤1: 直接获取评分和反馈
-      console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 步骤1/3: 获取评分和反馈`);
-      this.updateProgress(feedbackId, 'FEEDBACK', 1, 1);
-      const result = await feedbackService.getFeedback(request);
-      
-      // 检查反馈合理性
-      const feedbackLength = {
-        TR: result.feedbackTR.length,
-        CC: result.feedbackCC.length,
-        LR: result.feedbackLR.length,
-        GRA: result.feedbackGRA.length,
-        overall: result.overallFeedback.length
-      };
-      
-      console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 获取到评分和反馈`);
-      
-      // 如果所有评分都是0，记录警告
-      if (result.scoreTR === 0 && result.scoreCC === 0 && result.scoreLR === 0 && result.scoreGRA === 0) {
-        console.warn(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 警告: 所有评分都为0，可能存在API响应问题`);
-      }
-      
-      // 如果任一反馈文本很短，记录警告
-      if (feedbackLength.TR < 10 || feedbackLength.CC < 10 || feedbackLength.LR < 10 || feedbackLength.GRA < 10) {
-        console.warn(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 警告: 部分评价文本过短，可能存在格式问题`);
-      }
-      
-      // 步骤2: 处理段落批注
-      console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 步骤2/3: 获取段落批注`);
-      
+
+      // 获取最大并发任务数设置并创建并发任务管理器
+      const maxConcurrentTasks = await this.getMaxConcurrentTasks();
+      const taskManager = new ConcurrentTaskManager<any>(maxConcurrentTasks);
+
+      console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 使用最大并发数: ${maxConcurrentTasks}`);
+
       // 分割内容为段落
       let paragraphs: string[] = [];
-      
       if (typeof request.content === 'string') {
-        // 按照空行分割段落
         paragraphs = request.content.split(/\n\s*\n/).filter((p: string) => p.trim());
-        console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 内容已分为 ${paragraphs.length} 个段落`);
+        console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 内容已分为 ${paragraphs.length} 个段落`);
       } else if (Array.isArray(request.content)) {
         paragraphs = (request.content as string[]).filter((p: string) => p && p.trim());
-        console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 内容是数组，包含 ${paragraphs.length} 个段落`);
+        console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 内容是数组，包含 ${paragraphs.length} 个段落`);
       }
-      
-      // 为每个段落生成批注
-      const allAnnotations: Annotation[] = [];
-      
+
+      // 创建所有任务并发执行
+      console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 开始创建所有任务`);
+
+      // 任务1: 创建反馈任务
+      const feedbackTask = new FeedbackTask(feedbackService, request, projectId, request.versionNumber as string);
+      taskManager.addTask(feedbackTask.taskId, () => feedbackTask.execute());
+      console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 已添加反馈任务`);
+
+      // 任务2-N: 创建批注任务
+      const annotationTasks: AnnotationTask[] = [];
       for (let i = 0; i < paragraphs.length; i++) {
         const paragraph = paragraphs[i];
-        console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 处理段落 ${i+1}/${paragraphs.length}`);
-        
-        // 更新进度
-        this.updateProgress(feedbackId, 'ANNOTATION', paragraphs.length, i + 1);
-        
-        try {
-          // 获取段落批注
-          const annotations = await feedbackService.getAnnotation(paragraph, {
-            paragraphIndex: i,
+        const annotationTask = new AnnotationTask(
+          feedbackService,
+          paragraph,
+          i,
+          {
             allParagraphs: paragraphs,
-            feedback: JSON.stringify({
-              scoreTR: result.scoreTR,
-              scoreCC: result.scoreCC,
-              scoreLR: result.scoreLR,
-              scoreGRA: result.scoreGRA
-            }),
+            feedback: '', // 批注任务不依赖反馈结果，可以并发执行
             targetScore: request.targetScore,
             essayType: request.essayType,
             projectId: projectId.toString(),
             versionNumber: request.versionNumber
-          });
-          
-          console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 段落 ${i+1}/${paragraphs.length} 获取到 ${annotations.length} 条批注`);
-          
-          // 添加到全部批注
-          if (annotations && annotations.length > 0) {
-            allAnnotations.push(...annotations);
           }
-        } catch (error: any) {
-          console.error(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 获取段落 ${i+1}/${paragraphs.length} 批注失败: ${error.message || '未知错误'}`);
-        }
-      }
-      
-      console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 总共生成 ${allAnnotations.length} 条批注`);
-      
-      // 合并批注结果
-      result.annotations = allAnnotations;
-      
-      // 步骤3: 生成范文（如果启用了范文生成）
-      if (request.generateExampleEssay) {
-        console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 步骤3/3: 生成范文`);
-        this.updateProgress(feedbackId, 'EXAMPLE_ESSAY', 1, 1);
-        
-        try {
-          // 获取考试类型和类别
-          let essayCategory = '';
-          if (request.essayType) {
-            essayCategory = request.essayType === 'Task 1' ? 'task1' : 
-                           request.essayType === 'Task 2' ? 'task2' : '';
-          }
+        );
 
-          // 调用范文生成接口
-          const exampleEssay = await feedbackService.getExampleEssay(request.title, {
+        annotationTasks.push(annotationTask);
+        taskManager.addTask(annotationTask.taskId, () => annotationTask.execute());
+      }
+
+      console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 已添加 ${annotationTasks.length} 个批注任务`);
+
+      // 任务N+1: 创建范文任务（如果需要）
+      let exampleEssayTask: ExampleEssayTask | null = null;
+      if (request.generateExampleEssay) {
+        console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 创建范文任务`);
+
+        let essayCategory = '';
+        if (request.essayType) {
+          essayCategory = request.essayType === 'Task 1' ? 'task1' :
+                         request.essayType === 'Task 2' ? 'task2' : '';
+        }
+
+        exampleEssayTask = new ExampleEssayTask(
+          feedbackService,
+          request.title,
+          {
             examType: request.examType || 'IELTS',
             examCategory: essayCategory,
             targetScore: request.targetScore,
             projectId: projectId,
             versionNumber: parseInt(request.versionNumber as string),
             essayContent: request.content || ''
-          });
-          
-          console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 范文生成成功 [字数: ${exampleEssay.wordCount}]`);
-          
+          }
+        );
+
+        taskManager.addTask(exampleEssayTask.taskId, () => exampleEssayTask!.execute());
+        console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 已添加范文任务`);
+      }
+
+      // 执行所有任务（反馈 + 批注 + 范文）
+      const totalTasks = 1 + paragraphs.length + (exampleEssayTask ? 1 : 0); // feedback + annotations + example
+      this.updateProgress(feedbackId, 'ANNOTATION', totalTasks, 0);
+
+      console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 开始并发执行 ${totalTasks} 个任务 (反馈:1, 批注:${paragraphs.length}, 范文:${exampleEssayTask ? 1 : 0})`);
+      await taskManager.executeAll();
+
+      // 获取反馈结果
+      const feedbackResult = taskManager.getResult(feedbackTask.taskId) as FeedbackTaskResult;
+      if (!feedbackResult) {
+        throw new Error('反馈任务执行失败');
+      }
+
+      console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 反馈任务完成，获取到评分`);
+
+      // 检查反馈合理性
+      const feedbackLength = {
+        TR: feedbackResult.feedbackTR.length,
+        CC: feedbackResult.feedbackCC.length,
+        LR: feedbackResult.feedbackLR.length,
+        GRA: feedbackResult.feedbackGRA.length,
+        overall: feedbackResult.overallFeedback.length
+      };
+
+      // 如果所有评分都是0，记录警告
+      if (feedbackResult.scoreTR === 0 && feedbackResult.scoreCC === 0 && feedbackResult.scoreLR === 0 && feedbackResult.scoreGRA === 0) {
+        console.warn(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 警告: 所有评分都为0，可能存在API响应问题`);
+      }
+
+      // 如果任一反馈文本很短，记录警告
+      if (feedbackLength.TR < 10 || feedbackLength.CC < 10 || feedbackLength.LR < 10 || feedbackLength.GRA < 10) {
+        console.warn(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 警告: 部分评价文本过短，可能存在格式问题`);
+      }
+
+      // 收集批注结果并按段落顺序排序
+      const allAnnotations: Annotation[] = [];
+      for (const annotationTask of annotationTasks) {
+        const annotationResult = taskManager.getResult(annotationTask.taskId) as AnnotationTaskResult;
+        if (annotationResult && annotationResult.annotations.length > 0) {
+          allAnnotations.push(...annotationResult.annotations);
+        }
+
+        const error = taskManager.getError(annotationTask.taskId);
+        if (error) {
+          console.error(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 段落 ${annotationResult?.paragraphIndex + 1 || '未知'} 批注任务失败:`, error.message);
+        }
+      }
+
+      console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 总共生成 ${allAnnotations.length} 条批注`);
+
+      // 处理范文结果（如果有）
+      if (exampleEssayTask) {
+        const exampleResult = taskManager.getResult(exampleEssayTask.taskId) as ExampleEssayTaskResult;
+        const exampleError = taskManager.getError(exampleEssayTask.taskId);
+
+        if (exampleResult) {
+          console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 范文生成成功 [字数: ${exampleResult.wordCount}]`);
+
           // 将范文保存到数据库
           try {
             const exampleData: ExampleEssayCreate = {
               projectId: projectId,
               versionNumber: parseInt(request.versionNumber as string),
-              exampleContent: exampleEssay.exampleContent,
-              improvement: exampleEssay.improvement,
-              wordCount: exampleEssay.wordCount,
+              exampleContent: exampleResult.exampleContent,
+              improvement: exampleResult.improvement,
+              wordCount: exampleResult.wordCount,
               status: ProjectStatus.REVIEWED
             };
-            
+
             // 先查询是否已存在
             const existingExample = await this.exampleEssayModel.findByProjectIdAndVersion(
-              projectId, 
+              projectId,
               parseInt(request.versionNumber as string)
             );
-            
+
             if (existingExample) {
-              console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 范文已存在，需要更新`);
+              console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 范文已存在，需要更新`);
               // TODO: 添加更新范文的逻辑
             } else {
               await this.exampleEssayModel.create(exampleData);
-              console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 范文已保存到数据库`);
+              console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 范文已保存到数据库`);
             }
           } catch (dbError) {
-            console.error(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 保存范文失败: ${dbError}`);
+            console.error(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 保存范文失败: ${dbError}`);
             // 保存范文失败不影响主流程
           }
-        } catch (exampleError) {
-          console.error(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 范文生成失败: ${exampleError}`);
+        } else if (exampleError) {
+          console.error(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 范文生成失败:`, exampleError.message);
           // 范文生成失败不影响主流程
         }
       }
-      
+
       // 更新数据库
-      console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 更新数据库反馈记录 [反馈ID: ${feedbackId}]`);
-      
+      console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 更新数据库反馈记录 [反馈ID: ${feedbackId}]`);
+
       const updateData: FeedbackUpdate = {
         status: FeedbackStatus.COMPLETED,
-        scoreTR: result.scoreTR,
-        scoreCC: result.scoreCC,
-        scoreLR: result.scoreLR,
-        scoreGRA: result.scoreGRA,
-        feedbackTR: result.feedbackTR,
-        feedbackCC: result.feedbackCC,
-        feedbackLR: result.feedbackLR,
-        feedbackGRA: result.feedbackGRA,
-        overallFeedback: result.overallFeedback,
-        annotations: result.annotations
+        scoreTR: feedbackResult.scoreTR,
+        scoreCC: feedbackResult.scoreCC,
+        scoreLR: feedbackResult.scoreLR,
+        scoreGRA: feedbackResult.scoreGRA,
+        feedbackTR: feedbackResult.feedbackTR,
+        feedbackCC: feedbackResult.feedbackCC,
+        feedbackLR: feedbackResult.feedbackLR,
+        feedbackGRA: feedbackResult.feedbackGRA,
+        overallFeedback: feedbackResult.overallFeedback,
+        annotations: allAnnotations
       };
-      
+
       await this.feedbackModel.update(feedbackId, updateData);
-      console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 反馈记录更新成功 [反馈ID: ${feedbackId}]`);
-      
+      console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 反馈记录更新成功 [反馈ID: ${feedbackId}]`);
+
       // 更新项目和版本状态
       await this.projectModel.update(projectId, { status: ProjectStatus.REVIEWED });
-      console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 更新项目状态为已批改 [项目ID: ${projectId}]`);
-      
+      console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 更新项目状态为已批改 [项目ID: ${projectId}]`);
+
       await this.essayVersionModel.updateStatusByVersionNumber(
-        projectId, 
-        parseInt(request.versionNumber as string), 
+        projectId,
+        parseInt(request.versionNumber as string),
         ProjectStatus.REVIEWED
       );
-      console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 更新essay_version状态为已批改`);
-      
+      console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 更新essay_version状态为已批改`);
+
       // 记录完成时间
       await this.feedbackModel.updateCompletionTime(feedbackId);
-      
+
       // 清除进度信息
       this.processingFeedbacks.delete(feedbackId);
-      
-      console.log(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 批改流程完成 [反馈ID: ${feedbackId}]`);
+
+      // 计算总耗时
+      const endTime = Date.now();
+      const totalTime = endTime - startTime;
+
+      console.log(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 批改流程完成 [反馈ID: ${feedbackId}] [总耗时: ${totalTime}ms]`);
     } catch (error: any) {
-      console.error(`[AI批改] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 批改过程发生错误: ${error.message || '未知错误'}`);
+      console.error(`[AI批改-并发] [项目ID: ${projectId}] [版本: ${request.versionNumber}] 批改过程发生错误: ${error.message || '未知错误'}`);
       // 清除进度信息
       this.processingFeedbacks.delete(feedbackId);
       throw error;

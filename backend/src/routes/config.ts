@@ -5,9 +5,85 @@ import { ApiResponse, AIConfig } from '../types/api';
 import express from 'express';
 import { AppDataSource, getDatabaseConnection } from '../data-source';
 import { Config } from '../models/Config';
+import { GeneralSettingsService } from '../services/GeneralSettingsService';
 
 const router = Router();
 const configService = new ConfigService();
+const generalSettingsService = new GeneralSettingsService();
+
+// 获取通用设置
+router.get('/general', async (req, res, next) => {
+  try {
+    // 初始化默认设置（如果需要）
+    await generalSettingsService.initializeDefaultSettings();
+
+    // 获取最大并发任务数
+    const maxConcurrentTasks = await generalSettingsService.getMaxConcurrentTasks();
+
+    // 获取其他设置（可以根据需要扩展）
+    const otherSettings = await generalSettingsService.getSettings([
+      // 可以在这里添加其他设置键名
+    ]);
+
+    const response: ApiResponse<any> = {
+      success: true,
+      data: {
+        maxConcurrentTasks,
+        ...otherSettings
+      }
+    };
+    res.json(response);
+  } catch (error) {
+    console.error('获取通用设置失败:', error);
+    if (error instanceof ApiError) {
+      next(error);
+    } else {
+      next(new ApiError('获取通用设置失败', 'GENERAL_SETTINGS_FETCH_ERROR', 500));
+    }
+  }
+});
+
+// 保存通用设置
+router.post('/general', async (req, res, next) => {
+  try {
+    const { maxConcurrentTasks, ...otherSettings } = req.body;
+
+    // 验证最大并发任务数
+    if (maxConcurrentTasks !== undefined) {
+      if (typeof maxConcurrentTasks !== 'number' || maxConcurrentTasks < 1 || maxConcurrentTasks > 20) {
+        throw new ApiError('最大并发任务数必须是1-20之间的数字', 'INVALID_PARAMS', 400);
+      }
+
+      // 设置最大并发任务数
+      await generalSettingsService.setMaxConcurrentTasks(maxConcurrentTasks);
+    }
+
+    // 设置其他设置
+    if (Object.keys(otherSettings).length > 0) {
+      await generalSettingsService.setSettings(otherSettings);
+    }
+
+    // 返回更新后的设置
+    const updatedMaxConcurrentTasks = await generalSettingsService.getMaxConcurrentTasks();
+    const updatedOtherSettings = await generalSettingsService.getSettings(Object.keys(otherSettings));
+
+    const response: ApiResponse<any> = {
+      success: true,
+      data: {
+        maxConcurrentTasks: updatedMaxConcurrentTasks,
+        ...updatedOtherSettings
+      }
+    };
+    res.json(response);
+  } catch (error) {
+    console.error('保存通用设置失败:', error);
+    if (error instanceof ApiError) {
+      next(error);
+    } else {
+      next(new ApiError('保存通用设置失败', 'GENERAL_SETTINGS_SAVE_ERROR', 500));
+    }
+  }
+});
 
 // 获取当前活动配置
 router.get('/active', async (req, res, next) => {

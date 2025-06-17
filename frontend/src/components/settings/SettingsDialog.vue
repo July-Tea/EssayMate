@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { 
-  Setting, 
-  Connection, 
-  InfoFilled, 
-  Close, 
-  Edit 
+import {
+  Setting,
+  Connection,
+  InfoFilled,
+  Close,
+  Edit,
+  Tools,
+  Loading
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useConfigStore } from '../../stores/config'
+import api from '../../utils/api'
 
 interface AIModel {
   key: string
@@ -35,20 +38,30 @@ const isConfiguring = ref(false)
 const modelName = ref('')
 const hasApiKeyError = ref(false)
 
+// 通用设置相关
+const maxConcurrentTasks = ref(1)
+const isSavingGeneralSettings = ref(false)
+const saveTimeout = ref<NodeJS.Timeout | null>(null)
+
 const settingsMenu = [
-  { 
-    key: 'ai', 
-    label: 'AI配置', 
+  {
+    key: 'ai',
+    label: 'AI配置',
     icon: Setting
+  },
+  {
+    key: 'general',
+    label: '通用设置',
+    icon: Tools
   },
   {
     key: 'about',
     label: '关于',
     icon: InfoFilled
   },
-  { 
-    key: 'future', 
-    label: '更多功能', 
+  {
+    key: 'future',
+    label: '更多功能',
     icon: Connection,
     disabled: true,
     tooltip: '功能开发中...'
@@ -90,17 +103,68 @@ const showModelNameInput = computed(() => {
   return isDoubaoModel.value || isTongyiModel.value || isKimiModel.value;
 });
 
+// 加载通用设置
+const loadGeneralSettings = async () => {
+  try {
+    // 从后端加载通用设置
+    const response = await api.get('/api/config/general');
+    if (response.data.success && response.data.data) {
+      maxConcurrentTasks.value = response.data.data.maxConcurrentTasks || 1;
+    }
+  } catch (error) {
+    console.error('加载通用设置失败:', error);
+    // 使用默认值
+    maxConcurrentTasks.value = 1;
+  }
+}
+
+// 保存通用设置（带防抖）
+const saveGeneralSettings = () => {
+  // 如果已经在保存中，直接返回
+  if (isSavingGeneralSettings.value) return;
+
+  // 清除之前的定时器
+  if (saveTimeout.value) {
+    clearTimeout(saveTimeout.value);
+  }
+
+  // 设置新的定时器，500ms后执行保存
+  saveTimeout.value = setTimeout(async () => {
+    try {
+      isSavingGeneralSettings.value = true;
+
+      const response = await api.post('/api/config/general', {
+        maxConcurrentTasks: maxConcurrentTasks.value
+      });
+
+      if (response.data.success) {
+        ElMessage.success('通用设置保存成功');
+      } else {
+        throw new Error(response.data.message || '保存失败');
+      }
+    } catch (error) {
+      console.error('保存通用设置失败:', error);
+      ElMessage.error('保存通用设置失败');
+    } finally {
+      isSavingGeneralSettings.value = false;
+    }
+  }, 500);
+}
+
 // 加载配置
 onMounted(async () => {
   try {
     // 先加载所有配置，再加载活动配置
     await configStore.loadConfigs();
     await configStore.loadConfig();
-    
+
+    // 加载通用设置
+    await loadGeneralSettings();
+
     // 简化调试输出
     console.log('加载配置完成，活动配置:', configStore.activeConfig);
     console.log('所有配置:', configStore.allConfigs);
-    
+
     // 遍历所有模型，检查是否有活动模型
     props.aiModels.forEach(model => {
       if (configStore.isActiveModel(model.name)) {
@@ -119,11 +183,14 @@ watch(() => props.visible, async (newVal) => {
       // 先加载所有配置，再加载活动配置
       await configStore.loadConfigs();
       await configStore.loadConfig();
-      
+
+      // 加载通用设置
+      await loadGeneralSettings();
+
       // 调试输出活动模型信息
       console.log('对话框显示，当前活动配置:', configStore.activeConfig);
       console.log('所有配置:', configStore.allConfigs);
-      
+
       // 遍历所有模型，检查是否有活动模型
       props.aiModels.forEach(model => {
         if (configStore.isActiveModel(model.name)) {
@@ -436,6 +503,26 @@ const getPlaceholderText = (): string => {
               <el-icon><Connection /></el-icon>
               <span>更多模型正在接入中...</span>
             </div>
+          </div>
+        </div>
+
+        <!-- 通用设置面板 -->
+        <div v-else-if="activeSettingMenu === 'general'" class="general-settings-panel">
+          <div class="section-header">
+            <h3>通用设置</h3>
+          </div>
+
+          <div class="simple-setting-item">
+            <span class="setting-title">最大并发任务数</span>
+            <el-input-number
+              v-model="maxConcurrentTasks"
+              :min="1"
+              :max="20"
+              :step="1"
+              size="default"
+              controls-position="right"
+              @change="saveGeneralSettings"
+            />
           </div>
         </div>
 
