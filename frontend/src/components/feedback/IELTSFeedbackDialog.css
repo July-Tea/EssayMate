@@ -388,6 +388,9 @@
   flex: 1;
   padding: 32px;
   overflow-y: auto;
+  overflow-x: hidden; /* 确保不显示水平滚动条 */
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .paragraph {
@@ -1734,6 +1737,19 @@
   position: relative;
   will-change: transform;
   overflow: hidden;
+
+  /* 确保不显示水平滚动条 */
+  overflow-x: hidden;
+
+  /* Firefox - 隐藏所有滚动条 */
+  scrollbar-width: none;
+
+  /* Webkit browsers - 隐藏所有滚动条 */
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
 }
 
 .essay-original {
@@ -1746,6 +1762,10 @@
   transform: translateX(0);
   position: relative;
   overflow-x: hidden; /* 防止内容在收缩时溢出 */
+
+  /* 确保不显示水平滚动条 */
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .essay-example {
@@ -1761,6 +1781,11 @@
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+
+  /* 确保不显示水平滚动条 */
+  overflow-x: hidden;
+  max-width: calc(100% - var(--split-ratio));
+  box-sizing: border-box;
 }
 
 /* 范文入场动画状态 */
@@ -2044,46 +2069,44 @@
   }
 }
 
-/* Essay区域滚动条样式美化 */
+/* Essay区域滚动条样式美化 - 隐藏滚动条但保持滚动功能 */
 .essay-text,
 .essay-original,
 .essay-example {
-  /* Firefox */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(134, 134, 139, 0.2) transparent;
+  /* Firefox - 隐藏滚动条 */
+  scrollbar-width: none;
 
-  /* Webkit browsers */
+  /* Webkit browsers - 隐藏滚动条 */
   &::-webkit-scrollbar {
-    width: 4px; /* 更细的滚动条 */
+    display: none;
+    width: 0;
     background: transparent;
   }
 
   &::-webkit-scrollbar-track {
+    display: none;
     background: transparent;
-    margin: 4px 0; /* 增加顶部和底部的间距 */
   }
 
   &::-webkit-scrollbar-thumb {
-    background-color: rgba(134, 134, 139, 0.2); /* 非悬停时更淡 */
-    border-radius: 4px;
-    transition: all 0.3s ease;
-    opacity: 0.4; /* 初始透明度较低 */
-  }
-  
-  /* 在容器悬停时显示滚动条 */
-  &:hover::-webkit-scrollbar-thumb {
-    background-color: rgba(134, 134, 139, 0.4);
-    opacity: 1;
+    display: none;
+    background-color: transparent;
   }
 
-  /* 滚动条自身悬停效果 */
-  &::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(var(--el-color-primary-rgb), 0.4);
+  /* 确保在所有状态下都隐藏滚动条 */
+  &:hover::-webkit-scrollbar-thumb {
+    display: none;
+    background-color: transparent;
   }
-  
-  /* 滚动条自身点击效果 */
+
+  &::-webkit-scrollbar-thumb:hover {
+    display: none;
+    background-color: transparent;
+  }
+
   &::-webkit-scrollbar-thumb:active {
-    background-color: rgba(var(--el-color-primary-rgb), 0.7);
+    display: none;
+    background-color: transparent;
   }
 }
 
