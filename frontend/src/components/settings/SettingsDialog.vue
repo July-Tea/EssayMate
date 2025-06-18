@@ -6,8 +6,7 @@ import {
   InfoFilled,
   Close,
   Edit,
-  Tools,
-  Loading
+  Tools
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useConfigStore } from '../../stores/config'
@@ -41,7 +40,7 @@ const hasApiKeyError = ref(false)
 // 通用设置相关
 const maxConcurrentTasks = ref(1)
 const isSavingGeneralSettings = ref(false)
-const saveTimeout = ref<NodeJS.Timeout | null>(null)
+const saveTimeout = ref<number | null>(null)
 
 const settingsMenu = [
   {
@@ -541,7 +540,7 @@ const getPlaceholderText = (): string => {
             <img src="./../../assets/icon.svg" alt="Logo" class="about-logo"/>
             <div class="about-title">
               <h2>EssayMate</h2>
-              <span class="version">Version 0.1.1</span>
+              <span class="version">Version 0.1.2</span>
             </div>
           </div>
 

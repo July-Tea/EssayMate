@@ -1754,6 +1754,7 @@
 
 .essay-original {
   width: 100%; /* 初始状态占满全宽 */
+  padding-left: 5px; /* 添加左侧padding确保内容不会跑出可视区域 */
   padding-right: 20px;
   overflow-y: auto;
   padding-top: 10px;
@@ -1966,7 +1967,7 @@
 }
 
 .essay-text-split-container.entering .essay-original .original-title {
-  transform: translateX(-2px) scale(0.98);
+  transform: translateX(0) scale(0.98);
   opacity: 0.9;
 }
 
@@ -1983,9 +1984,9 @@
   transform-origin: left center;
 }
 
-/* 入场时：原文段落轻微缩放和位移，营造自然的收缩感 */
+/* 入场时：原文段落轻微缩放，移除位移避免内容跑出可视区域 */
 .essay-text-split-container.entering .essay-original .paragraph {
-  transform: translateX(-3px) scale(0.98);
+  transform: translateX(0) scale(0.98);
   opacity: 0.92;
 }
 
@@ -2039,6 +2040,11 @@
   .essay-original,
   .essay-example {
     padding-right: 15px;
+    padding-left: 15px;
+  }
+
+  /* 在小屏幕上确保原文左侧有足够的padding */
+  .essay-original {
     padding-left: 15px;
   }
   

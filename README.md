@@ -1,6 +1,6 @@
 # EssayMate
 
-[![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![Vue](https://img.shields.io/badge/Vue-3.x-green.svg)](https://vuejs.org/) [![Node](https://img.shields.io/badge/Node-18.20.7-blue.svg)](https://nodejs.org/) [![Version](https://img.shields.io/badge/Version-v0.1.1-orange.svg)](https://github.com/July-Tea/EssayMate)
+[![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![Vue](https://img.shields.io/badge/Vue-3.x-green.svg)](https://vuejs.org/) [![Node](https://img.shields.io/badge/Node-18.20.7-blue.svg)](https://nodejs.org/) [![Version](https://img.shields.io/badge/Version-v0.1.2-orange.svg)](https://github.com/July-Tea/EssayMate)
 
 EssayMate 是一个基于 AI 的雅思/托福/GRE作文批改助手，支持自动评分、详细反馈和智能建议。
 EssayMate is an AI-powered IELTS / TOEFL / GRE essay correction assistant that provides automated scoring, detailed feedback, and intelligent suggestions.
