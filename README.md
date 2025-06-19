@@ -68,7 +68,6 @@ After starting, visit http://localhost:5173 to use the application
 - [ ] OpenAI
 
 ## 📋 待办事项 | Todo List
-- [ ] 批改等待时间优化（并发批改） / Optimization of Grading Waiting Time (Concurrent Grading)
 - [ ] 接入更多AI模型 / Integrate more AI models
 - [ ] 加入OCR文字识别功能 / Integrate OCR for image text recognition
 - [ ] 完善AI随心问 - 加入上下文 / Improve AI Chat Feature – Add Context Support
@@ -80,8 +79,9 @@ After starting, visit http://localhost:5173 to use the application
 - [ ] 图片理解能力支持（Task 1） / Image understanding support (Task 1)
 - [ ] Prompt Engineering 优化 / Prompt Engineering optimization
 - [ ] 前端界面语言设置 / Frontend interface langauge settings
-- [ ] 优化批改流程的用户界面和交互体验，解决响应延迟问题 / Optimized user interface and interaction experience of the correction process, addressing response latency issues
 - [ ] 反馈语言设置 / Feedback language settings
+- [x] 优化批改流程的用户界面和交互体验，解决响应延迟问题 / Optimized user interface and interaction experience of the correction process, addressing response latency issues
+- [x] 批改等待时间优化（并发批改） / Optimization of Grading Waiting Time (Concurrent Grading)
 - [x] 统一雅思写作Task 1和Task 2的反馈界面，提升用户体验 / Unified feedback interface for IELTS Writing Task 1 and Task 2, improving user experience
 - [x] 项目列表批量管理 / Batch project list management
 - [x] 优化等待体验 / Optimize the waiting experience
